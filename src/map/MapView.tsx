@@ -9,11 +9,10 @@ export default function MapView({ mode, granularity }: { mode: Mode, granularity
     const mapRef = useRef<Map | null>(null)
 
     const GROUPS = {
-        nuts0: ['nuts0-fill', 'nuts0-outline'],
-        nuts1: ['nuts1-fill', 'nuts1-outline'],
-        nuts2: ['nuts2-fill', 'nuts2-outline'],
-        nuts3: ['nuts3-fill', 'nuts3-outline'],
-        // si tienes labels separadas por nivel, añádelas aquí
+        nuts0: ['nuts0-fill', 'nuts0-outline', 'nuts0-labels'],
+        nuts1: ['nuts1-fill', 'nuts1-outline', 'nuts1-labels'],
+        nuts2: ['nuts2-fill', 'nuts2-outline', 'nuts2-labels'],
+        nuts3: ['nuts3-fill', 'nuts3-outline', 'nuts3-labels'],
     }
 
     // helper para mostrar/ocultar grupos
@@ -63,10 +62,10 @@ export default function MapView({ mode, granularity }: { mode: Mode, granularity
             applyGranularity(map, granularity)
         })
 
-        map.on('click', 'nuts-labels', e => {
+        map.on('click', 'nuts0-labels', e => {
             console.log(e.features?.[0]?.properties);
-          });
-          
+        });
+
 
         return () => { map.remove() }
     }, [granularity, mode])

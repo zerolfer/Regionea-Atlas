@@ -43,6 +43,20 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 filter: ['==', ['get', 'LEVL_CODE'], 0],
                 paint: { 'line-color': '#334155', 'line-width': 0.6 }
             },
+            {
+                id: 'nuts0-labels',
+                type: 'symbol',
+                source: 'nuts',
+                'source-layer': 'nuts',
+                minzoom: 0, maxzoom: 4,
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '0'],
+                layout: {
+                    'text-field': ['coalesce', ['get', 'NAME_LATN'], ['get', 'NUTS_ID']],
+                    'text-font': ['Noto Sans Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 2, 11, 4, 13]
+                },
+                paint: { 'text-color': '#111827', 'text-halo-color': '#fff', 'text-halo-width': 1 }
+            },
 
             // NUTS1 → z 4–5.99
             {
@@ -62,6 +76,20 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 minzoom: 4, maxzoom: 6,
                 filter: ['==', ['get', 'LEVL_CODE'], 1],
                 paint: { 'line-color': '#4338ca', 'line-width': 0.8 }
+            },
+            {
+                id: 'nuts1-labels',
+                type: 'symbol',
+                source: 'nuts',
+                'source-layer': 'nuts',
+                minzoom: 4, maxzoom: 6,
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '1'],
+                layout: {
+                    'text-field': ['coalesce', ['get', 'NAME_LATN'], ['get', 'NUTS_ID']],
+                    'text-font': ['Noto Sans Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 4, 11, 6, 13]
+                },
+                paint: { 'text-color': '#111827', 'text-halo-color': '#fff', 'text-halo-width': 1 }
             },
 
             // NUTS2 → z 6–7.99
@@ -83,6 +111,20 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 filter: ['==', ['get', 'LEVL_CODE'], 2],
                 paint: { 'line-color': '#16a34a', 'line-width': 0.9 }
             },
+            {
+                id: 'nuts2-labels',
+                type: 'symbol',
+                source: 'nuts',
+                'source-layer': 'nuts',
+                minzoom: 6, maxzoom: 8,
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '2'],
+                layout: {
+                    'text-field': ['coalesce', ['get', 'NAME_LATN'], ['get', 'NUTS_ID']],
+                    'text-font': ['Noto Sans Regular'],
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 6, 11, 8, 14]
+                },
+                paint: { 'text-color': '#111827', 'text-halo-color': '#fff', 'text-halo-width': 1 }
+            },
 
             // NUTS3 → z 8–24
             {
@@ -103,21 +145,20 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 filter: ['==', ['get', 'LEVL_CODE'], 3],
                 paint: { 'line-color': '#dc2626', 'line-width': 1.0 }
             },
-
-            // (Opcional) etiquetas por el mismo layer (si de momento no tienes 'nuts_labels')
             {
-                id: 'nuts-labels',
+                id: 'nuts3-labels',
                 type: 'symbol',
                 source: 'nuts',
                 'source-layer': 'nuts',
-                minzoom: 3,
+                minzoom: 8, maxzoom: 24,
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '3'],
                 layout: {
-                    'text-field': ['coalesce', ['get', 'NAME_LATN'], ['get', 'NUTS_NAME'], ['get', 'name']],
+                    'text-field': ['coalesce', ['get', 'NAME_LATN'], ['get', 'NUTS_ID']],
                     'text-font': ['Noto Sans Regular'],
-                    'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 8, 14]
+                    'text-size': ['interpolate', ['linear'], ['zoom'], 8, 12, 12, 16]
                 },
                 paint: { 'text-color': '#111827', 'text-halo-color': '#fff', 'text-halo-width': 1 }
-            }
+            },
         ]
     }
 }
