@@ -1,0 +1,30 @@
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+
+  prod:
+    build:
+      context: .
+      target: prod
+    ports:
+      - "8080:80"
+
+  tiles:
+    build:
+      context: .
+      target: tiles
+    volumes:
+      - .:/work
+    entrypoint: ["/bin/sh","-lc","sleep infinity"]
+
+volumes:
+  node_modules:

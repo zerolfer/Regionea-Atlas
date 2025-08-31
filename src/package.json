@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "maplibre-gl": "^5.7.0",
+    "pmtiles": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/geojson": "^7946.0.16",
+    "vite-plugin-pwa": "^1.0.3"
+  }
+}

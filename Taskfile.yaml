@@ -1,0 +1,68 @@
+version: '3'
+
+vars:
+  DC: docker compose
+
+tasks:
+  # —— App web ——
+  dev:
+    desc: "Levanta Vite en http://localhost:5173"
+    cmds:
+      - "{{.DC}} up web"
+
+  dev:detached:
+    desc: "Levanta Vite en segundo plano"
+    cmds:
+      - "{{.DC}} up -d web"
+
+  dev:shell:
+    desc: "Abrir una shell dentro del contenedor de desarrollo"
+    cmds:
+      - "{{.DC}} exec web /bin/bash"
+
+
+  stop:
+    desc: "Detiene y limpia contenedores"
+    cmds:
+      - "{{.DC}} down"
+
+  build:
+    desc: "Compila la app (target prod)"
+    cmds:
+      - "{{.DC}} build prod"
+      - "{{.DC}} run --rm prod ls -la /usr/share/nginx/html"
+
+  serve:prod:
+    desc: "Sirve build en http://localhost:8080"
+    cmds:
+      - "{{.DC}} up -d prod"
+
+  # —— Tiles —— 
+  ensure-dirs:
+    internal: true
+    cmds:
+      - "mkdir -p public/data data"
+
+  tiles:nuts:
+    desc: "Genera NUTS Europa → public/data/nuts_eu.pmtiles (requiere data/nuts.geojson)"
+    deps: [ensure-dirs]
+    cmds:
+      - "{{.DC}} build tiles"
+      - >
+        {{.DC}} run --rm tiles
+        tippecanoe -o public/data/nuts_eu.pmtiles
+        -Z2 -z9
+        --drop-densest-as-needed --coalesce --reorder --detect-shared-borders
+        --layer=nuts
+        --include NAME_LATN --include NUTS_ID
+        /work/data/nuts.geojson
+
+  tiles:inspect:
+    desc: "Muestra metadatos del PMTiles"
+    cmds:
+      - "{{.DC}} run --rm tiles pmtiles info public/data/nuts_eu.pmtiles"
+
+  tiles:serve:
+    desc: "(Opcional) sirve PMTiles como HTTP en :8081 para pruebas"
+    cmds:
+      - "{{.DC}} run --rm -p 8081:8081 -v $PWD:/work tiles pmtiles serve /work/public/data/nuts_eu.pmtiles --port 8081"

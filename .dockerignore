@@ -1,0 +1,11 @@
+node_modules
+.dist
+.vscode
+.git
+.DS_Store
+coverage
+.cache
+
+# outputs
+/dist
+/public/data/*.pmtiles
