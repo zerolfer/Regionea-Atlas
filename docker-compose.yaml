@@ -24,7 +24,7 @@ services:
       target: tiles
     volumes:
       - .:/work
-    entrypoint: ["/bin/sh","-lc","sleep infinity"]
+    command: sleep infinity
 
 volumes:
   node_modules:

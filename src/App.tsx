@@ -1,35 +1,25 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import MapView from './map/MapView'
+import ModeSwitch from './components/ModeSwitch'
+import GranularityDial from './components/GranularityDial'
 
-function App() {
-  const [count, setCount] = useState(0)
+export type Mode = 'politico' | 'relieve' | 'transportes'
+
+export default function App() {
+  const [mode, setMode] = useState<Mode>('politico')
+  const [granularity, setGranularity] = useState<'auto' | 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'>('auto')
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="ui card">
+        <div className="row" style={{ marginBottom: 8 }}>
+          <ModeSwitch value={mode} onChange={setMode} />
+        </div>
+        {mode === 'politico' && (
+          <GranularityDial value={granularity} onChange={setGranularity} />
+        )}
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <MapView mode={mode} granularity={granularity} />
     </>
   )
 }
-
-export default App

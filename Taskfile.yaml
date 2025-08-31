@@ -20,6 +20,13 @@ tasks:
     cmds:
       - "{{.DC}} exec web /bin/bash"
 
+  dev:rebuild:
+    desc: "Reconstruye y levanta dev (limpio)"
+    cmds:
+      - "{{.DC}} down -v"
+      # - "docker builder prune -f"
+      - "{{.DC}} build web"
+      - "{{.DC}} up web"
 
   stop:
     desc: "Detiene y limpia contenedores"
@@ -38,14 +45,14 @@ tasks:
       - "{{.DC}} up -d prod"
 
   # —— Tiles —— 
-  ensure-dirs:
-    internal: true
-    cmds:
-      - "mkdir -p public/data data"
+  # ensure-dirs:
+    # internal: true
+    # cmds:
+      # - "mkdir -p public/data data"
 
   tiles:nuts:
     desc: "Genera NUTS Europa → public/data/nuts_eu.pmtiles (requiere data/nuts.geojson)"
-    deps: [ensure-dirs]
+    # deps: [ensure-dirs]
     cmds:
       - "{{.DC}} build tiles"
       - >
@@ -66,3 +73,21 @@ tasks:
     desc: "(Opcional) sirve PMTiles como HTTP en :8081 para pruebas"
     cmds:
       - "{{.DC}} run --rm -p 8081:8081 -v $PWD:/work tiles pmtiles serve /work/public/data/nuts_eu.pmtiles --port 8081"
+
+  tiles:convert-nuts:
+    desc: "Convierte NUTS 2024 GPKG (niveles 0–3) a GeoJSON unificado"
+    # deps: [ensure-dirs]
+    cmds:
+      - "{{.DC}} build tiles"
+      - >
+        {{.DC}} run --rm -v $PWD/data:/work/data tiles "ogr2ogr -f GeoJSON -progress /work/data/nuts.geojson
+        /work/data/ref-nuts-2024-01m.gpkg/NUTS_RG_01M_2024_4326_LEVL_0.gpkg -nln nuts"
+      - >
+        {{.DC}} run --rm -v $PWD/data:/work/data tiles "ogr2ogr -f GeoJSON -progress -append /work/data/nuts.geojson
+        /work/data/ref-nuts-2024-01m.gpkg/NUTS_RG_01M_2024_4326_LEVL_1.gpkg -nln nuts"
+      - >
+        {{.DC}} run --rm -v $PWD/data:/work/data tiles "ogr2ogr -f GeoJSON -progress -append /work/data/nuts.geojson
+        /work/data/ref-nuts-2024-01m.gpkg/NUTS_RG_01M_2024_4326_LEVL_2.gpkg -nln nuts"
+      - >
+        {{.DC}} run --rm -v $PWD/data:/work/data tiles "ogr2ogr -f GeoJSON -progress -append /work/data/nuts.geojson
+        /work/data/ref-nuts-2024-01m.gpkg/NUTS_RG_01M_2024_4326_LEVL_3.gpkg -nln nuts"
