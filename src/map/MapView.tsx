@@ -62,9 +62,11 @@ export default function MapView({ mode, granularity }: { mode: Mode, granularity
             applyGranularity(map, granularity)
         })
 
-        map.on('click', 'nuts0-labels', e => {
-            console.log(e.features?.[0]?.properties);
-        });
+        for (let i = 0; i <= 3; i++) {
+            map.on('click', `nuts${i}-labels`, e => {
+                console.log(e.features?.[0]?.properties);
+            });
+        }
 
 
         return () => { map.remove() }
