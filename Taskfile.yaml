@@ -57,22 +57,23 @@ tasks:
       - "{{.DC}} build tiles"
       - >
         {{.DC}} run --rm tiles
-        tippecanoe -o public/data/nuts_eu.pmtiles
+        tippecanoe "-o data/nuts_eu.pmtiles
         -Z2 -z9
         --drop-densest-as-needed --coalesce --reorder --detect-shared-borders
         --layer=nuts
-        --include NAME_LATN --include NUTS_ID
-        /work/data/nuts.geojson
+        /work/data/nuts.geojson"
 
   tiles:inspect:
     desc: "Muestra metadatos del PMTiles"
     cmds:
-      - "{{.DC}} run --rm tiles pmtiles info public/data/nuts_eu.pmtiles"
+      - > 
+        {{.DC}} run --rm -v $PWD/data:/work/data tiles "pmtiles info /work/data/nuts_eu.pmtiles"
 
   tiles:serve:
     desc: "(Opcional) sirve PMTiles como HTTP en :8081 para pruebas"
     cmds:
-      - "{{.DC}} run --rm -p 8081:8081 -v $PWD:/work tiles pmtiles serve /work/public/data/nuts_eu.pmtiles --port 8081"
+      - >
+        {{.DC}} run --rm -p 8081:8081 -v $PWD:/work tiles "pmtiles serve /work/public/data/nuts_eu.pmtiles --port 8081"
 
   tiles:convert-nuts:
     desc: "Convierte NUTS 2024 GPKG (niveles 0–3) a GeoJSON unificado"
@@ -91,3 +92,8 @@ tasks:
       - >
         {{.DC}} run --rm -v $PWD/data:/work/data tiles "ogr2ogr -f GeoJSON -progress -append /work/data/nuts.geojson
         /work/data/ref-nuts-2024-01m.gpkg/NUTS_RG_01M_2024_4326_LEVL_3.gpkg -nln nuts"
+
+  tiles:shell:
+    desc: "Abrir una shell dentro del contenedor de tiles"
+    cmds:
+      - "{{.DC}} run --rm -v $PWD:/work -it tiles /bin/bash"

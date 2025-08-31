@@ -15,9 +15,11 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
             // Base raster dev (opcional): quítalo cuando uses un basemap PMTiles
             osm: {
                 type: 'raster',
-                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tiles: [
+                    'https://cartodb-basemaps-a.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png'
+                ],
                 tileSize: 256,
-                attribution: '© OpenStreetMap'
+                attribution: '© OpenStreetMap contributors © CARTO'
             }
         },
         layers: [
@@ -111,7 +113,7 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 minzoom: 3,
                 layout: {
                     'text-field': ['coalesce', ['get', 'NAME_LATN'], ['get', 'NUTS_NAME'], ['get', 'name']],
-                    'text-font': ['Open Sans Regular', 'Open Sans Semibold'],
+                    'text-font': ['Noto Sans Regular'],
                     'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 8, 14]
                 },
                 paint: { 'text-color': '#111827', 'text-halo-color': '#fff', 'text-halo-width': 1 }
