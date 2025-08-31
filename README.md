@@ -1,3 +1,6 @@
+Regionea Atlas es un visor geográfico multiplataforma que permite explorar las divisiones territoriales y temáticas desde lo global hasta lo local, con capas políticas, de relieve, transportes y puntos de interés.
+
+
 # Objetivo de esta primera iteración
 
 Arrancar un **MVP 100 % cliente (sin servidor)** que cargue:
