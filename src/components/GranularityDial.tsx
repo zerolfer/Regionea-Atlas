@@ -1,21 +1,26 @@
-const options = [
-    { id: 'auto', label: 'Auto' },
-    { id: 'nuts0', label: 'NUTS0' },
-    { id: 'nuts1', label: 'NUTS1' },
-    { id: 'nuts2', label: 'NUTS2' },
-    { id: 'nuts3', label: 'NUTS3' },
-] as const
+type Mode = 'auto' | 'manual'
+type Level = 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'
 
-type V = typeof options[number]['id']
-
-export default function GranularityDial({ value, onChange }: { value: V, onChange: (v: V) => void }) {
+export default function GranularityDial({
+    mode, level, onMode, onDeepen, onBack
+}: {
+    mode: Mode
+    level: Level
+    onMode: (m: Mode) => void
+    onDeepen: () => void
+    onBack: () => void
+}) {
     return (
         <div className="row">
-            {options.map(o => (
-                <button key={o.id} className={value === o.id ? 'active' : ''} onClick={() => onChange(o.id)}>
-                    {o.label}
-                </button>
-            ))}
+            <button className={mode === 'auto' ? 'active' : ''} onClick={() => onMode('auto')}>Auto</button>
+            <button className={mode === 'manual' ? 'active' : ''} onClick={() => onMode('manual')}>Manual</button>
+            {mode === 'manual' && (
+                <>
+                    <button title="Retroceder" onClick={onBack}>←</button>
+                    <button title="Profundizar" onClick={onDeepen}>Profundizar →</button>
+                    <span style={{ marginLeft: 6, opacity: .7 }}>{level.toUpperCase()}</span>
+                </>
+            )}
         </div>
     )
 }
