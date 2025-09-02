@@ -6,12 +6,12 @@ import { buildStyle } from './style'
 import type { Mode } from '../App'
 
 export default function MapView({
-    mode,
+    // mode, // XXX: De momento sin uso
     granMode,
     level,
     onAutoLevel
 }: {
-    mode: Mode,
+    // mode: Mode, // XXX: De momento sin uso
     granMode: 'auto' | 'manual',
     level: 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3',
     onAutoLevel?: (lvl: 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3') => void

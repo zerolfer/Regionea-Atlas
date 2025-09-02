@@ -44,6 +44,11 @@ tasks:
     cmds:
       - "{{.DC}} up -d prod"
 
+  prod:shell:
+    desc: "Abrir una shell dentro del contenedor de producción"
+    cmds:
+      - "{{.DC}} exec prod /bin/sh"
+
   # —— Tiles —— 
   # ensure-dirs:
     # internal: true
