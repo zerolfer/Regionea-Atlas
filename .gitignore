@@ -23,3 +23,4 @@ dist-ssr
 *.sln
 *.sw?
 data/ref-nuts-2024-01m.gpkg/
+dev-dist/*
