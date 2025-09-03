@@ -16,7 +16,7 @@ services:
       context: .
       target: prod
     ports:
-      - "8080:80"
+      - "8070:80"
 
   tiles:
     build:

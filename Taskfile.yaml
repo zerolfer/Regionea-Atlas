@@ -33,16 +33,21 @@ tasks:
     cmds:
       - "{{.DC}} down"
 
-  build:
+  prod:build:
     desc: "Compila la app (target prod)"
     cmds:
       - "{{.DC}} build prod"
       - "{{.DC}} run --rm prod ls -la /usr/share/nginx/html"
 
-  serve:prod:
+  prod:serve:
     desc: "Sirve build en http://localhost:8080"
     cmds:
       - "{{.DC}} up -d prod"
+
+  prod:shell:
+    desc: "Abrir una shell dentro del contenedor de producción"
+    cmds:
+      - "{{.DC}} exec prod /bin/sh"
 
   # —— Tiles —— 
   # ensure-dirs:

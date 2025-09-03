@@ -7,8 +7,9 @@ export type Mode = 'politico' | 'relieve' | 'transportes'
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('politico')
-  const [granularity, setGranularity] = useState<'auto' | 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'>('auto')
-
+  const [granMode, setGranMode] = useState<'auto' | 'manual'>('auto')
+  const [level, setLevel] = useState<'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'>('nuts0')
+  
   return (
     <>
       <div className="ui card">
@@ -16,10 +17,29 @@ export default function App() {
           <ModeSwitch value={mode} onChange={setMode} />
         </div>
         {mode === 'politico' && (
-          <GranularityDial value={granularity} onChange={setGranularity} />
+          <GranularityDial
+            mode={granMode}
+            level={level}
+            onMode={setGranMode}
+            onDeepen={() => {
+              const NEXT = { nuts0: 'nuts1', nuts1: 'nuts2', nuts2: 'nuts3', nuts3: 'nuts3' } as const
+              const next = NEXT[level]
+              setLevel(next)
+            }}
+            onBack={() => {
+              const PREV = { nuts0: 'nuts0', nuts1: 'nuts0', nuts2: 'nuts1', nuts3: 'nuts2' } as const
+              const prev = PREV[level]
+              setLevel(prev)
+            }}
+          />
         )}
       </div>
-      <MapView mode={mode} granularity={granularity} />
+      <MapView 
+        // mode={mode} // XXX: De momento sin uso
+        granMode={granMode} 
+        level={level} 
+        onAutoLevel={(lvl) => setLevel(lvl)}
+        />
     </>
   )
 }

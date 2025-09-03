@@ -8,7 +8,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt'],
+      devOptions: { enabled: true },
+      // includeAssets: ['favicon.ico', 'robots.txt'],
       manifest: {
         name: 'Regionea Atlas',
         short_name: 'Regionea Atlas',
@@ -18,11 +19,14 @@ export default defineConfig({
         background_color: '#ffffff',
         theme_color: '#0ea5e9',
         icons: [
-          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+          { "src": "/favicon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+          { "src": "/favicon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+          { "src": "/favicon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
         ]
-      }
+      },
     })
   ]
 })
+
+
+
