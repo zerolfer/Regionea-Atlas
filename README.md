@@ -88,8 +88,8 @@ export default defineConfig({
         background_color: '#ffffff',
         theme_color: '#0ea5e9',
         icons: [
-          { src: '/pwa-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/pwa-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/favicon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/favicon-512.png', sizes: '512x512', type: 'image/png' },
           { src: '/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       }
@@ -409,6 +409,8 @@ export const LAYERS: LayerEntry[] = [
 
 * Descarga el shapefile/GeoPackage de **NUTS 2024** (niveles 0–3). (En producción, documentaremos la URL exacta y licencia.)
 * Unifica a **EPSG:4326** o **3857** según prefieras para preproceso (Tippecanoe espera 4326 en GeoJSON).
+
+Fuentes: https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/territorial-units-statistics
 
 ### 4.2 Preprocesar y crear centroides de etiquetas
 
