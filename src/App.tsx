@@ -2,13 +2,14 @@ import { useState } from 'react'
 import MapView from './map/MapView'
 import ModeSwitch from './components/ModeSwitch'
 import GranularityDial from './components/GranularityDial'
-
-export type Mode = 'politico' | 'relieve' | 'transportes'
+import type { Mode, GranMode, Level } from './types'
+import Toast from './components/Toast'
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('politico')
-  const [granMode, setGranMode] = useState<'auto' | 'manual'>('auto')
-  const [level, setLevel] = useState<'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'>('nuts0')
+  const [granMode, setGranMode] = useState<GranMode>('auto')
+  const [level, setLevel] = useState<Level>('nuts0')
+  const [toast, setToast] = useState<string | null>(null)
   
   return (
     <>
@@ -39,7 +40,9 @@ export default function App() {
         granMode={granMode} 
         level={level} 
         onAutoLevel={(lvl) => setLevel(lvl)}
+        onToast={(m)=> setToast(m)}
         />
+      <Toast message={toast} />
     </>
   )
 }

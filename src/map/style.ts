@@ -41,7 +41,7 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 source: 'nuts',
                 'source-layer': 'nuts',
                 minzoom: 8, maxzoom: 24,
-                filter: ['==', ['get', 'LEVL_CODE'], 3],
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '3'],
                 paint: { 'line-color': '#dc2626', 'line-width': 1.0 }
             },
             {
@@ -75,7 +75,7 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 source: 'nuts',
                 'source-layer': 'nuts',
                 minzoom: 6, maxzoom: 8,
-                filter: ['==', ['get', 'LEVL_CODE'], 2],
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '2'],
                 paint: { 'line-color': '#16a34a', 'line-width': 0.9 }
             },
             {
@@ -109,7 +109,7 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 source: 'nuts',
                 'source-layer': 'nuts',
                 minzoom: 4, maxzoom: 6,
-                filter: ['==', ['get', 'LEVL_CODE'], 1],
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '1'],
                 paint: { 'line-color': '#4338ca', 'line-width': 0.8 }
             },
             {
@@ -143,7 +143,7 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 source: 'nuts',
                 'source-layer': 'nuts',
                 minzoom: 0, maxzoom: 4,
-                filter: ['==', ['get', 'LEVL_CODE'], 0],
+                filter: ['==', ['to-string', ['get', 'LEVL_CODE']], '0'],
                 paint: { 'line-color': '#334155', 'line-width': 0.6 }
             },
             {

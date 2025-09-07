@@ -24,7 +24,6 @@ services:
       target: tiles
     volumes:
       - .:/work
-    command: sleep infinity
 
 volumes:
   node_modules:

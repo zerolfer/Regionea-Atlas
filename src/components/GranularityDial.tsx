@@ -1,5 +1,4 @@
-type Mode = 'auto' | 'manual'
-type Level = 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'
+import type { GranMode as Mode, Level } from '../types'
 
 export default function GranularityDial({
     mode, level, onMode, onDeepen, onBack
@@ -12,8 +11,8 @@ export default function GranularityDial({
 }) {
     return (
         <div className="row">
-            <button className={mode === 'auto' ? 'active' : ''} onClick={() => onMode('auto')}>Auto</button>
-            <button className={mode === 'manual' ? 'active' : ''} onClick={() => onMode('manual')}>Manual</button>
+            <button className={mode === 'auto' ? 'active' : ''} aria-pressed={mode==='auto'} onClick={() => onMode('auto')}>Auto</button>
+            <button className={mode === 'manual' ? 'active' : ''} aria-pressed={mode==='manual'} onClick={() => onMode('manual')}>Manual</button>
             {mode === 'manual' && (
                 <>
                     <button title="Retroceder" onClick={onBack}>←</button>

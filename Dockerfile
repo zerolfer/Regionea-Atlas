@@ -57,5 +57,4 @@ RUN set -eux; \
   # el tar contiene un binario llamado 'pmtiles'
   install -m 0755 /tmp/pmtiles /usr/local/bin/pmtiles; \
   pmtiles version
-ENTRYPOINT ["/bin/sh","-lc"]
-CMD ["sleep infinity"]
+## No default entrypoint/cmd to allow Taskfile to provide the command

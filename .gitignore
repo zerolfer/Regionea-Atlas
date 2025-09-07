@@ -25,3 +25,4 @@ dist-ssr
 data/ref-nuts-2024-01m.gpkg/
 dev-dist/*
 .vercel
+data/*

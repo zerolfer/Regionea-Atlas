@@ -3,21 +3,25 @@ import maplibregl, { Map } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { registerPMTilesProtocol } from './pmtiles'
 import { buildStyle } from './style'
-import type { Mode } from '../App'
+import type { GranMode, Level } from '../types'
 
 export default function MapView({
     // mode, // XXX: De momento sin uso
     granMode,
     level,
-    onAutoLevel
+    onAutoLevel,
+    onToast
 }: {
     // mode: Mode, // XXX: De momento sin uso
-    granMode: 'auto' | 'manual',
-    level: 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3',
-    onAutoLevel?: (lvl: 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3') => void
+    granMode: GranMode,
+    level: Level,
+    onAutoLevel?: (lvl: Level) => void,
+    onToast?: (message: string) => void
 }
 ) {
     const mapRef = useRef<Map | null>(null)
+    const headingMarkerRef = useRef<maplibregl.Marker | null>(null)
+    const lastPosRef = useRef<{ lng: number, lat: number } | null>(null)
 
     const GROUPS = {
         nuts0: [/*'nuts0-fill',*/ 'nuts0-outline', 'nuts0-labels'],
@@ -27,8 +31,8 @@ export default function MapView({
     }
 
     const ORDER = ['nuts0', 'nuts1', 'nuts2', 'nuts3'] as const
-    type Level = typeof ORDER[number]
-    const LEVEL_CODE: Record<Level, '0' | '1' | '2' | '3'> = {
+    type LocalLevel = typeof ORDER[number]
+    const LEVEL_CODE: Record<LocalLevel, '0' | '1' | '2' | '3'> = {
         nuts0: '0', nuts1: '1', nuts2: '2', nuts3: '3'
     }
 
@@ -44,7 +48,7 @@ export default function MapView({
 
     // type Level = 'nuts0' | 'nuts1' | 'nuts2' | 'nuts3'
 
-    function levelFromZoom(z: number): Level {
+    function levelFromZoom(z: number): LocalLevel {
         if (z < 4) return 'nuts0'
         if (z < 6) return 'nuts1'
         if (z < 8) return 'nuts2'
@@ -85,7 +89,7 @@ export default function MapView({
             setGroupZoomRange(map, GROUPS[k], min, max)
         })
     }
-    function setLevelFilter(map: maplibregl.Map, granMode: 'auto' | 'manual', level: Level) {
+    function setLevelFilter(map: maplibregl.Map, granMode: GranMode, level: LocalLevel) {
         // Asegura visibilidad (controlaremos con filtros/opacidades)
         (Object.values(GROUPS).flat()).forEach(id => {
             if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible')
@@ -158,10 +162,7 @@ export default function MapView({
 
     useEffect(() => {
         // Registrar protocolo pmtiles una sola vez
-        if (!(maplibregl as any)._pmtilesRegistered) {
-            registerPMTilesProtocol()
-                ; (maplibregl as any)._pmtilesRegistered = true
-        }
+        registerPMTilesProtocol()
 
         const nutsUrl = 'pmtiles://data/nuts_eu.pmtiles'
 
@@ -179,6 +180,53 @@ export default function MapView({
         mapRef.current = map
 
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+        // Control de geolocalización (botón para ir a mi ubicación y mostrar punto)
+        const geolocate = new maplibregl.GeolocateControl({
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true,
+            showUserLocation: true,
+            showAccuracyCircle: false,
+            fitBoundsOptions: { maxZoom: 10 },
+        })
+        map.addControl(geolocate, 'top-right')
+        geolocate.on('error', () => onToast?.('No se pudo acceder a la ubicación'))
+
+        function ensureHeadingMarker(): maplibregl.Marker {
+            if (headingMarkerRef.current) return headingMarkerRef.current
+            const el = document.createElement('div')
+            el.className = 'heading-arrow'
+            const m = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
+            headingMarkerRef.current = m
+            m.addTo(map)
+            return m
+        }
+
+        function updateHeading(lng: number, lat: number, headingDeg?: number | null) {
+            const marker = ensureHeadingMarker()
+            marker.setLngLat([lng, lat])
+            lastPosRef.current = { lng, lat }
+            const el = marker.getElement()
+            if (typeof headingDeg === 'number' && !Number.isNaN(headingDeg)) {
+                el.style.transform = `rotate(${headingDeg}deg)`
+            } else {
+                el.style.transform = ''
+            }
+        }
+
+        geolocate.on('geolocate', (e: GeolocationPosition) => {
+            const { longitude, latitude, heading } = e.coords as GeolocationCoordinates & { heading?: number | null }
+            updateHeading(longitude, latitude, heading ?? null)
+        })
+
+        // Fallback a orientación del dispositivo para rotar la flecha si no hay heading del GPS
+        const onDeviceOrientation = (evt: DeviceOrientationEvent) => {
+            if (!lastPosRef.current) return
+            // alpha: 0–360 respecto al norte
+            const alpha = typeof evt.alpha === 'number' ? evt.alpha : null
+            if (alpha == null) return
+            updateHeading(lastPosRef.current.lng, lastPosRef.current.lat, alpha)
+        }
+        window.addEventListener('deviceorientation', onDeviceOrientation)
 
         map.on('load', () => {
             // switchGroup(map, granularity)
@@ -189,11 +237,25 @@ export default function MapView({
         // Registrar el handler de click para todos los niveles NUTS 0-3
         for (let i = 0; i < Object.keys(GROUPS).length; i++) {
             map.on('click', `nuts${i}-labels`, (e: maplibregl.MapLayerMouseEvent) => {
-                console.log(e.features?.[0]?.properties);
+                const props = e.features?.[0]?.properties as any
+                try {
+                    onToast?.(JSON.stringify(props, null, 2))
+                } catch {
+                    const name = props?.NAME_LATN || props?.NUTS_ID || 'Sin nombre'
+                    const code = props?.NUTS_ID ? ` (${props.NUTS_ID})` : ''
+                    onToast?.(`${name}${code}`)
+                }
             });
         }
 
-        return () => { map.remove() }
+        return () => {
+            window.removeEventListener('deviceorientation', onDeviceOrientation)
+            if (headingMarkerRef.current) {
+                headingMarkerRef.current.remove()
+                headingMarkerRef.current = null
+            }
+            map.remove()
+        }
     }, [])
 
     useEffect(() => {
