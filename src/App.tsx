@@ -15,7 +15,7 @@ export default function App() {
   return (
     <>
       <div className="ui card">
-        <div className="row" style={{ marginBottom: 8 }}>
+        <div className="row" style={{ marginBottom: 8, justifyContent: 'space-between' }}>
           <ModeSwitch value={mode} onChange={setMode} />
         </div>
         {mode === 'politico' && (

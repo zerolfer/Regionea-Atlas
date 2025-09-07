@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { registerPMTilesProtocol } from './pmtiles'
 import { buildStyle } from './style'
 import type { GranMode, Level } from '../types'
+import { APP_VERSION } from '../version'
 
 export default function MapView({
     // mode, // XXX: De momento sin uso
@@ -170,6 +171,7 @@ export default function MapView({
             center: [10, 50],
             zoom: 3,
             hash: true,
+            attributionControl: false,
             maxTileCacheSize: 1024,
             fadeDuration: 0,
             maxTileCacheZoomLevels: 10
@@ -177,7 +179,8 @@ export default function MapView({
         })
         mapRef.current = map
 
-        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+        map.addControl(new maplibregl.NavigationControl({ showCompass: true,  showZoom: false, visualizeRoll: true}), 'top-right')
+        map.addControl(new maplibregl.AttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-left')
         // Control de geolocalización (botón para ir a mi ubicación y mostrar punto)
         const geolocate = new maplibregl.GeolocateControl({
             positionOptions: { enableHighAccuracy: true },
@@ -186,16 +189,28 @@ export default function MapView({
             showAccuracyCircle: false,
             fitBoundsOptions: { maxZoom: 10 },
         })
-        map.addControl(geolocate, 'top-right')
+        map.addControl(geolocate, 'bottom-right')
         geolocate.on('error', () => onToast?.('No se pudo acceder a la ubicación'))
 
         // Usamos solo el marcador nativo de GeolocateControl
+
+        function toggleCompassVisibility() {
+            const bearing = map.getBearing()
+            const pitch = map.getPitch()
+            const el = map.getContainer().querySelector('.maplibregl-ctrl-compass') as HTMLElement | null
+            if (!el) return
+            const isNorth = Math.abs(bearing) < 0.0001 && Math.abs(pitch) < 0.0001
+            el.style.display = isNorth ? 'none' : ''
+        }
 
         map.on('load', () => {
             // switchGroup(map, granularity)
             setLevelFilter(map, granMode, level)
             if (granMode === 'manual') ensureZoomInRange(map, level)
+            toggleCompassVisibility()
         })
+        map.on('rotate', toggleCompassVisibility)
+        map.on('pitch', toggleCompassVisibility)
 
         // Registrar el handler de click para todos los niveles NUTS 0-3
         for (let i = 0; i < Object.keys(GROUPS).length; i++) {
@@ -211,7 +226,11 @@ export default function MapView({
             });
         }
 
-        return () => { map.remove() }
+        return () => {
+            map.off('rotate', toggleCompassVisibility)
+            map.off('pitch', toggleCompassVisibility)
+            map.remove()
+        }
     }, [])
 
     useEffect(() => {
