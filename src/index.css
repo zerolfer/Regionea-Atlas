@@ -51,13 +51,28 @@ body,
 .maplibregl-ctrl-group > button .maplibregl-ctrl-icon {
   background-size: 35px !important;
 } 
-.maplibregl-ctrl, .maplibregl-ctrl-group{
-border-radius: 90% !important;
+.maplibregl-ctrl, .maplibregl-ctrl-group {
+  border-radius: 90% !important;
 }
-.maplibregl-ctrl-geolocate, .maplibregl-ctrl-compass, maplibregl-ctrl-group > button, maplibregl-ctrl, maplibregl-ctrl-group > button .maplibregl-ctrl-icon {
+/* Apply margin-bottom only when parent contains geolocate control */
+.maplibregl-ctrl:has(.maplibregl-ctrl-geolocate),
+.maplibregl-ctrl-group:has(.maplibregl-ctrl-geolocate) {
+  margin-bottom: 50px !important;
+}
+.maplibregl-ctrl-geolocate {
   width: 35px !important;
   height: 35px !important;
 }
+
+.maplibregl-ctrl-geolocate {
+  width: 65px !important;
+  height: 65px !important;
+}
+
+.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon {
+  background-size: 85px;
+}
+
 
 .row {
   display: flex;
