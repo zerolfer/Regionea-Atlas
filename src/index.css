@@ -82,8 +82,26 @@ body,
   height: 50px !important;
 }
 
-.maplibregl-ctrl-geolocate .maplibregl-ctrl-icon {
-  background-size: 65px;
+ .maplibregl-ctrl-geolocate .maplibregl-ctrl-icon {
+   background-size: 65px;
+ }
+
+/* Mobile layout adjustments */
+@media (max-width: 480px) {
+  /* .ui.card { */
+    /* width: 100vw; */
+    /* margin: 0; */
+    /* border-radius: 0; */
+    /* box-shadow: none; */
+    /* left: 0; */
+    /* margin: 5px 10px */
+  /* } */
+  
+  .maplibregl-ctrl:has(.maplibregl-ctrl-compass),
+  .maplibregl-ctrl-group:has(.maplibregl-ctrl-compass) {
+    margin-top: 110px !important;
+  }
+  
 }
 
 
