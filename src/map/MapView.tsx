@@ -3,17 +3,17 @@ import maplibregl, { Map } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { registerPMTilesProtocol } from './pmtiles'
 import { buildStyle } from './style'
-import type { GranMode, Level } from '../types'
+import type { GranMode, Level, Mode } from '../types'
 import { APP_VERSION } from '../version'
 
 export default function MapView({
-    // mode, // XXX: De momento sin uso
+    mode, 
     granMode,
     level,
     onAutoLevel,
     onToast
 }: {
-    // mode: Mode, // XXX: De momento sin uso
+    mode: Mode,
     granMode: GranMode,
     level: Level,
     onAutoLevel?: (lvl: Level) => void,
@@ -37,6 +37,18 @@ export default function MapView({
 
 
     const EASE_DURATION = 500
+
+    function updateBaseLayerVisibility(map: maplibregl.Map, mode: Mode) {
+        if (!map.isStyleLoaded()) return
+        
+        // OSM (modo político)
+        map.setLayoutProperty('osm', 'visibility', mode === 'politico' ? 'visible' : 'none')
+        
+        // OpenTopoMap (modo relieve)
+        map.setLayoutProperty('opentopomap', 'visibility', mode === 'relieve' ? 'visible' : 'none')
+        
+        // TODO: Añadir capa para modo transportes
+    }
 
     // const LEVEL_ZOOM_RANGE: Record<'nuts0' | 'nuts1' | 'nuts2' | 'nuts3', { min: number, max: number }> = {
     //     nuts0: { min: 0, max: 3.9 }, // países
@@ -208,6 +220,9 @@ export default function MapView({
             setLevelFilter(map, granMode, level)
             if (granMode === 'manual') ensureZoomInRange(map, level)
             toggleCompassVisibility()
+            
+            // Configurar visibilidad de capas base según el modo
+            updateBaseLayerVisibility(map, mode)
         })
         map.on('rotate', toggleCompassVisibility)
         map.on('pitch', toggleCompassVisibility)
@@ -257,6 +272,13 @@ export default function MapView({
         setLevelFilter(map, 'manual', level)
         ensureZoomInRange(map, level)
     }, [level, granMode])
+
+    // cuando cambia el modo (político/relieve/transportes)
+    useEffect(() => {
+        const map = mapRef.current
+        if (!map || !map.isStyleLoaded()) return
+        updateBaseLayerVisibility(map, mode)
+    }, [mode])
 
 
     return <div id="map" />

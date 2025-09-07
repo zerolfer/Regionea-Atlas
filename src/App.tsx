@@ -37,7 +37,7 @@ export default function App() {
         )}
       </div>
       <MapView 
-        // mode={mode} // XXX: De momento sin uso
+        mode={mode}
         granMode={granMode} 
         level={level} 
         onAutoLevel={(lvl) => setLevel(lvl)}

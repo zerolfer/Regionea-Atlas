@@ -20,10 +20,22 @@ export function buildStyle(nutsUrl: string): StyleSpecification {
                 ],
                 tileSize: 256,
                 attribution: '© OpenStreetMap contributors © CARTO'
+            },
+            // OpenTopoMap para modo relieve
+            opentopomap: {
+                type: 'raster',
+                tiles: [
+                    // 'https://tile.tracestrack.com/topo__/{z}/{x}/{y}.webp'
+                    // 'https://maps-for-free.com/layer/relief/z{z}/row{y}/{z}_{x}-{y}.jpg'
+                    'https://c.tile.opentopomap.org/{z}/{x}/{y}.png'
+                ],
+                tileSize: 256,
+                attribution: '© OpenStreetMap contributors © OpenTopoMap'
             }
         },
         layers: [
             { id: 'osm', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 22 },
+            { id: 'opentopomap', type: 'raster', source: 'opentopomap', minzoom: 0, maxzoom: 22, layout: { visibility: 'none' } },
             
             // NUTS3 → z 8–24
             // {
