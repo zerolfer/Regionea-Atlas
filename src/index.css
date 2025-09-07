@@ -57,8 +57,11 @@ body,
   background-size: 35px !important;
 }
 
-.maplibregl-ctrl,
-.maplibregl-ctrl-group {
+.maplibregl-ctrl-top-right {
+  display: none;
+}
+:not(details) .maplibregl-ctrl,
+:not(details) .maplibregl-ctrl-group {
   border-radius: 90% !important;
   padding: 5px !important;
 }

@@ -196,11 +196,11 @@ export default function MapView({
 
         function toggleCompassVisibility() {
             const bearing = map.getBearing()
-            const pitch = map.getPitch()
-            const el = map.getContainer().querySelector('.maplibregl-ctrl-compass') as HTMLElement | null
+            const pitch = map.getPitch() 
+            const el = map.getContainer().querySelector('div.maplibregl-control-container > div.maplibregl-ctrl-top-right') as HTMLElement | null
             if (!el) return
             const isNorth = Math.abs(bearing) < 0.0001 && Math.abs(pitch) < 0.0001
-            el.style.display = isNorth ? 'none' : ''
+            el.style.display = isNorth ? 'none' : 'block'
         }
 
         map.on('load', () => {
