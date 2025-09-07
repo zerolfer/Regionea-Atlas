@@ -60,8 +60,8 @@ body,
 .maplibregl-ctrl-top-right {
   display: none;
 }
-:not(details) .maplibregl-ctrl,
-:not(details) .maplibregl-ctrl-group {
+:not(.maplibregl-ctrl-bottom-left ) > .maplibregl-ctrl,
+:not(.maplibregl-ctrl-bottom-left ) > .maplibregl-ctrl-group {
   border-radius: 90% !important;
   padding: 5px !important;
 }
