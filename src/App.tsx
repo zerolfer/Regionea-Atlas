@@ -4,7 +4,7 @@ import ModeSwitch from './components/ModeSwitch'
 import GranularityDial from './components/GranularityDial'
 import type { Mode, GranMode, Level } from './types'
 import Toast from './components/Toast'
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/react"
 
 export default function App() {
   const [mode, setMode] = useState<Mode>('politico')
