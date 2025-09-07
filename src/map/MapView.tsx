@@ -20,8 +20,6 @@ export default function MapView({
 }
 ) {
     const mapRef = useRef<Map | null>(null)
-    const headingMarkerRef = useRef<maplibregl.Marker | null>(null)
-    const lastPosRef = useRef<{ lng: number, lat: number } | null>(null)
 
     const GROUPS = {
         nuts0: [/*'nuts0-fill',*/ 'nuts0-outline', 'nuts0-labels'],
@@ -191,42 +189,7 @@ export default function MapView({
         map.addControl(geolocate, 'top-right')
         geolocate.on('error', () => onToast?.('No se pudo acceder a la ubicación'))
 
-        function ensureHeadingMarker(): maplibregl.Marker {
-            if (headingMarkerRef.current) return headingMarkerRef.current
-            const el = document.createElement('div')
-            el.className = 'heading-arrow'
-            const m = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' })
-            headingMarkerRef.current = m
-            m.addTo(map)
-            return m
-        }
-
-        function updateHeading(lng: number, lat: number, headingDeg?: number | null) {
-            const marker = ensureHeadingMarker()
-            marker.setLngLat([lng, lat])
-            lastPosRef.current = { lng, lat }
-            const el = marker.getElement()
-            if (typeof headingDeg === 'number' && !Number.isNaN(headingDeg)) {
-                el.style.transform = `rotate(${headingDeg}deg)`
-            } else {
-                el.style.transform = ''
-            }
-        }
-
-        geolocate.on('geolocate', (e: GeolocationPosition) => {
-            const { longitude, latitude, heading } = e.coords as GeolocationCoordinates & { heading?: number | null }
-            updateHeading(longitude, latitude, heading ?? null)
-        })
-
-        // Fallback a orientación del dispositivo para rotar la flecha si no hay heading del GPS
-        const onDeviceOrientation = (evt: DeviceOrientationEvent) => {
-            if (!lastPosRef.current) return
-            // alpha: 0–360 respecto al norte
-            const alpha = typeof evt.alpha === 'number' ? evt.alpha : null
-            if (alpha == null) return
-            updateHeading(lastPosRef.current.lng, lastPosRef.current.lat, alpha)
-        }
-        window.addEventListener('deviceorientation', onDeviceOrientation)
+        // Usamos solo el marcador nativo de GeolocateControl
 
         map.on('load', () => {
             // switchGroup(map, granularity)
@@ -248,14 +211,7 @@ export default function MapView({
             });
         }
 
-        return () => {
-            window.removeEventListener('deviceorientation', onDeviceOrientation)
-            if (headingMarkerRef.current) {
-                headingMarkerRef.current.remove()
-                headingMarkerRef.current = null
-            }
-            map.remove()
-        }
+        return () => { map.remove() }
     }, [])
 
     useEffect(() => {

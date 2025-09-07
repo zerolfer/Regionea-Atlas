@@ -35,29 +35,6 @@ body,
 }
 .toast.show { opacity: 1; }
 
-/* Heading arrow for user location */
-.heading-arrow {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(14,165,233,.15);
-  border: 2px solid #0ea5e9;
-  position: relative;
-  transform-origin: 50% 50%;
-}
-.heading-arrow::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 10px solid #0ea5e9; /* triangle arrow */
-  transform: translate(-50%, -75%);
-}
-
 .card {
   background: rgba(255, 255, 255, .9);
   padding: 8px 12px;
