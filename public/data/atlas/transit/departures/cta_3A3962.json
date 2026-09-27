@@ -1,0 +1,1 @@
+{"stopId":"cta:3962","departures":[{"route":"Col","destination":"Infiesto","scheduledTime":"07:20:00","freshness":"scheduled","serviceId":"10","scheduledSeconds":26400,"tripId":"216100710","stopSequence":4},{"route":"Inf","destination":"Infiesto","scheduledTime":"13:10:00","freshness":"scheduled","serviceId":"158","scheduledSeconds":47400,"tripId":"2271581300","stopSequence":4}]}

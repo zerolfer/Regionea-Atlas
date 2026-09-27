@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run data:sync && npm run build",
+  "buildCommand": "npm run data:publish && npm run build",
   "rewrites": [
     { "source": "/mapa/:path*", "destination": "/index.html" }
   ],

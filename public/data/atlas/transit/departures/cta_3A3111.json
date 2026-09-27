@@ -1,0 +1,1 @@
+{"stopId":"cta:3111","departures":[{"route":"Mel","destination":"Nava","scheduledTime":"09:30:00","freshness":"scheduled","serviceId":"29","scheduledSeconds":34200,"tripId":"268290930","stopSequence":1},{"route":"Mel","destination":"Melendreros","scheduledTime":"12:55:00","freshness":"scheduled","serviceId":"29","scheduledSeconds":46500,"tripId":"269291230","stopSequence":11}]}

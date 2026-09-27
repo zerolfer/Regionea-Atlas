@@ -1,0 +1,1 @@
+{"stopId":"cta:1689","departures":[{"route":"San","destination":"Vegadeo","scheduledTime":"09:16:00","freshness":"scheduled","serviceId":"36","scheduledSeconds":33360,"tripId":"4885360900","stopSequence":5},{"route":"San","destination":"Vegadeo","scheduledTime":"10:00:00","freshness":"scheduled","serviceId":"15","scheduledSeconds":36000,"tripId":"4889150900","stopSequence":14}]}

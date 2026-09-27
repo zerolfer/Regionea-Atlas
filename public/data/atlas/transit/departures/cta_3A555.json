@@ -1,0 +1,1 @@
+{"stopId":"cta:555","departures":[{"route":"Can","destination":"Gijón","scheduledTime":"11:15:00","freshness":"scheduled","serviceId":"9","scheduledSeconds":40500,"tripId":"663291045","stopSequence":32},{"route":"Can","destination":"Gijón","scheduledTime":"20:00:00","freshness":"scheduled","serviceId":"10","scheduledSeconds":72000,"tripId":"6632101930","stopSequence":32}]}

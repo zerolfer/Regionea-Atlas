@@ -1,0 +1,1 @@
+{"stopId":"cta:4754","departures":[{"route":"Tin","destination":"Tineo","scheduledTime":"08:20:00","freshness":"scheduled","serviceId":"10","scheduledSeconds":30000,"tripId":"1132100630","stopSequence":20},{"route":"Tin","destination":"Tineo","scheduledTime":"20:05:00","freshness":"scheduled","serviceId":"17","scheduledSeconds":72300,"tripId":"1132171815","stopSequence":20}]}

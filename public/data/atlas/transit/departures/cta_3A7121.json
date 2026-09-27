@@ -1,0 +1,1 @@
+{"stopId":"cta:7121","departures":[{"route":"El","destination":"Infiesto","scheduledTime":"09:55:00","freshness":"scheduled","serviceId":"129","scheduledSeconds":35700,"tripId":"72551290930","stopSequence":14},{"route":"El","destination":"El Pico","scheduledTime":"13:20:00","freshness":"scheduled","serviceId":"93","scheduledSeconds":48000,"tripId":"7256931300","stopSequence":3}]}

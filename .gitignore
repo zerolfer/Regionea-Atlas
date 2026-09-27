@@ -30,4 +30,3 @@ dev-dist
 *.sw?
 .vercel
 data/*
-/public/data/atlas/

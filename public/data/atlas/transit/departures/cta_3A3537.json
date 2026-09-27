@@ -1,0 +1,1 @@
+{"stopId":"cta:3537","departures":[{"route":"Por","destination":"Porrua","scheduledTime":"12:30:00","freshness":"scheduled","serviceId":"204","scheduledSeconds":45000,"tripId":"21062041215","stopSequence":5},{"route":"Por","destination":"Porrua","scheduledTime":"13:25:00","freshness":"scheduled","serviceId":"23","scheduledSeconds":48300,"tripId":"2098231300","stopSequence":5}]}

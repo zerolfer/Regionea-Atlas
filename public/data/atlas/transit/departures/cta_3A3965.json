@@ -1,0 +1,1 @@
+{"stopId":"cta:3965","departures":[{"route":"Inf","destination":"Colunga","scheduledTime":"10:32:00","freshness":"scheduled","serviceId":"158","scheduledSeconds":37920,"tripId":"2261580930","stopSequence":19},{"route":"Col","destination":"Colunga","scheduledTime":"18:52:00","freshness":"scheduled","serviceId":"10","scheduledSeconds":67920,"tripId":"217101800","stopSequence":18}]}

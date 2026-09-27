@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "data:sync": "node scripts/sync-atlas-data.mjs && node scripts/build-content.mjs && node scripts/ensure-demo-transit.mjs",
+    "data:publish": "node scripts/build-content.mjs && node scripts/ensure-demo-transit.mjs",
     "data:content": "node scripts/build-content.mjs",
     "data:validate": "node scripts/validate-atlas-data.mjs",
     "data:import-gtfs": "node scripts/import-gtfs.mjs"

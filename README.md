@@ -33,7 +33,7 @@ npm run data:sync
 npm run dev
 ```
 
-El snapshot de `public/data/atlas` es generado y está ignorado por Git. `data:sync` crea también un transporte de demostración sólo cuando todavía no existe un GTFS importado; nunca sustituye un snapshot de transporte válido.
+El snapshot de `public/data/atlas`, territorio, físico y transporte, se versiona con el repositorio. `data:sync` crea un transporte de demostración sólo cuando todavía no existe un GTFS importado y nunca sustituye un snapshot de transporte válido.
 
 La aplicación queda disponible en `http://localhost:5173/mapa/politico`. Rutas principales:
 
@@ -60,7 +60,7 @@ task prod:serve
 
 ## Datos territoriales y físicos
 
-El snapshot desplegable se encuentra en `public/data/atlas`. Para regenerarlo desde las fuentes oficiales:
+El snapshot desplegable se encuentra en `public/data/atlas`. Para regenerarlo en local desde las fuentes oficiales:
 
 ```bash
 npm run data:sync
@@ -119,4 +119,4 @@ src/
 └─ types.ts                  Contratos internos
 ```
 
-Los originales descargados y los snapshots generados se excluyen de Git. Se regeneran mediante los scripts de datos cuando son necesarios.
+Los originales descargados en `data/` se excluyen de Git. El snapshot de `public/data/atlas` viaja con el repositorio: el build de Vercel no consigue conectar con `sig.asturias.es`.
