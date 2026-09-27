@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
+import http from 'node:http'
+import https from 'node:https'
 import path from 'node:path'
 
 const ROOT = process.cwd()
@@ -25,32 +27,98 @@ function slugify(value) {
     .replace(/(^-|-$)/g, '')
 }
 
-async function fetchJson(url, attempt = 1) {
-  const response = await fetch(url, {
-    headers: { 'user-agent': 'Regionea-Atlas data pipeline' },
-  })
-  if (!response.ok) {
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, attempt * 750))
-      return fetchJson(url, attempt + 1)
+const DOWNLOAD_TIMEOUT_MS = 60_000
+const DOWNLOAD_ATTEMPTS = 4
+const asturiasDownloads = createLimiter(1)
+
+function createLimiter(limit) {
+  let active = 0
+  const queue = []
+  const pump = () => {
+    while (active < limit && queue.length > 0) {
+      const job = queue.shift()
+      active += 1
+      job().finally(() => {
+        active -= 1
+        pump()
+      })
     }
-    throw new Error(`${response.status} al descargar ${url}`)
   }
-  return response.json()
+  return (job) => new Promise((resolve, reject) => {
+    queue.push(() => job().then(resolve, reject))
+    pump()
+  })
+}
+
+function isRetryableDownload(error) {
+  if (typeof error?.statusCode === 'number') return error.statusCode === 429 || error.statusCode >= 500
+  return ['ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'EAI_AGAIN', 'ENOTFOUND', 'ECONNABORTED', 'UND_ERR_CONNECT_TIMEOUT'].includes(error?.code)
+}
+
+function readUrl(url, redirectsLeft = 5) {
+  return new Promise((resolve, reject) => {
+    let settled = false
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+    const succeed = (value) => {
+      if (settled) return
+      settled = true
+      resolve(value)
+    }
+    const target = new URL(url)
+    const transport = target.protocol === 'https:' ? https : http
+    const request = transport.get(target, {
+      family: 4,
+      timeout: DOWNLOAD_TIMEOUT_MS,
+      headers: {
+        'user-agent': 'Regionea-Atlas data pipeline',
+        accept: 'application/json,text/plain,*/*',
+        'accept-encoding': 'identity',
+      },
+    }, (response) => {
+      const status = response.statusCode ?? 0
+      const location = response.headers.location
+      if (status >= 300 && status < 400 && location && redirectsLeft > 0) {
+        response.resume()
+        succeed(readUrl(new URL(location, target).toString(), redirectsLeft - 1))
+        return
+      }
+      const chunks = []
+      response.on('data', (chunk) => chunks.push(chunk))
+      response.on('end', () => {
+        if (status < 200 || status >= 300) {
+          fail(Object.assign(new Error(`${status} al descargar ${url}`), { statusCode: status }))
+          return
+        }
+        succeed(Buffer.concat(chunks).toString('utf8'))
+      })
+    })
+    request.on('timeout', () => {
+      request.destroy(Object.assign(new Error(`Tiempo de conexión agotado al descargar ${url}`), { code: 'ETIMEDOUT' }))
+    })
+    request.on('error', fail)
+  })
 }
 
 async function fetchText(url, attempt = 1) {
-  const response = await fetch(url, {
-    headers: { 'user-agent': 'Regionea-Atlas data pipeline' },
-  })
-  if (!response.ok) {
-    if (attempt < 3) {
-      await new Promise((resolve) => setTimeout(resolve, attempt * 750))
-      return fetchText(url, attempt + 1)
-    }
-    throw new Error(`${response.status} al descargar ${url}`)
+  const download = () => readUrl(url)
+  try {
+    return new URL(url).hostname === 'sig.asturias.es'
+      ? await asturiasDownloads(download)
+      : await download()
+  } catch (error) {
+    if (attempt >= DOWNLOAD_ATTEMPTS || !isRetryableDownload(error)) throw error
+    process.stderr.write(`Reintento ${attempt} al descargar ${url}: ${error.message}\n`)
+    await new Promise((resolve) => setTimeout(resolve, attempt * 3000))
+    return fetchText(url, attempt + 1)
   }
-  return response.text()
+}
+
+async function fetchJson(url) {
+  return JSON.parse(await fetchText(url))
 }
 
 function parseJavascriptGeoJson(source, variableName) {
