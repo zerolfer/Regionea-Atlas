@@ -10,7 +10,13 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dev-dist
+.npm-cache
+.vitest
 *.local
+*.mbtiles
+*.pmtiles
+*-journal
 
 # Editor directories and files
 .vscode/*
@@ -22,7 +28,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-data/ref-nuts-2024-01m.gpkg/
-dev-dist/*
 .vercel
 data/*
+/public/data/atlas/

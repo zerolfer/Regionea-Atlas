@@ -2,14 +2,6 @@ version: '3'
 
 vars:
   DC: docker compose
-  
-  # Tiles (multi-capa, limpio)
-  TILES_GPKG_PATH: "data/gadm_410-levels.gpkg"
-  TILES_GPKG_LAYERS_STR: "ADM_0 ADM_1 ADM_2 ADM_3 ADM_4 ADM_5"
-  TILES_OUTPUT_DIR: "data/tiles"
-  TILES_T_SRS: "EPSG:4326"
-  TIPPE_FLAGS: "--drop-densest-as-needed --coalesce-densest-as-needed --read-parallel --no-feature-limit --no-tile-size-limit --force -P"
-  TILES_JOINED_PMTILES: "data/gadm.pmtiles"
 
 tasks:
   # —— App web ——
@@ -57,45 +49,12 @@ tasks:
     cmds:
       - "{{.DC}} exec prod /bin/sh"
 
-  # —— Tiles —— 
-
-  tiles:serve:
-    desc: "Sirve un PMTiles como HTTP en :8081 para pruebas"
+  data:sync:
+    desc: "Descarga, valida y genera el atlas GeoJSON y el contenido editorial"
     cmds:
-      - >
-        {{.DC}} run --rm -p 8081:8081 -v $PWD:/work tiles \
-        "pmtiles serve /work/{{.TILES_JOINED_PMTILES}} --port 8081"
+      - "{{.DC}} run --rm web npm run data:sync"
 
-
-  tiles:gpkg-layers-stream-to-mbtiles:
-    desc: "Genera un MBTiles por cada capa definida en TILES_GPKG_LAYERS (streaming)"
+  data:content:
+    desc: "Regenera sólo el contenido editorial"
     cmds:
-      - "{{.DC}} build tiles"
-      - >
-        {{.DC}} run -T --rm -v $PWD:/work tiles /bin/sh -lc "chmod +x /work/scripts/build_mbtiles.sh && /work/scripts/build_mbtiles.sh '{{.TILES_GPKG_PATH}}' '/work/{{.TILES_OUTPUT_DIR}}' '{{.TILES_GPKG_LAYERS_STR}}' '{{.TILES_T_SRS}}' '{{.TIPPE_FLAGS}}'"
-
-  tiles:mbtiles-join-to-pmtiles:
-    desc: "Une todos los MBTiles del directorio de salida en un PMTiles multi-capa"
-    cmds:
-      - "{{.DC}} build tiles"
-      - >
-        {{.DC}} run -T --rm -v $PWD:/work tiles /bin/sh -lc "
-          set -e;
-          OUT_PM=/work/{{.TILES_JOINED_PMTILES}};
-          OUT_MB=\"${OUT_PM%.pmtiles}.mbtiles\";
-          rm -f \"$OUT_PM\" \"$OUT_MB\";
-          FILES=\"$(ls -1 /work/{{.TILES_OUTPUT_DIR}}/*.mbtiles 2>/dev/null || true)\";
-          if [ -z \"$FILES\" ]; then echo 'No hay MBTiles en {{.TILES_OUTPUT_DIR}}'; exit 1; fi;
-          tile-join -o \"$OUT_MB\" $FILES && pmtiles convert \"$OUT_MB\" \"$OUT_PM\";"
-
-  tiles:gpkg-all-to-pmtiles:
-    desc: "Pipeline completo: GPKG (todas las capas) → MBTiles por capa → PMTiles multi-capa"
-    cmds:
-      - task: tiles:gpkg-layers-stream-to-mbtiles
-      - task: tiles:mbtiles-join-to-pmtiles
-
-
-  tiles:shell:
-    desc: "Abrir una shell dentro del contenedor de tiles"
-    cmds:
-      - "{{.DC}} run --rm -v $PWD:/work -it tiles /bin/bash"
+      - "{{.DC}} run --rm web npm run data:content"

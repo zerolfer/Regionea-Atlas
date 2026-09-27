@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 
+const TOAST_TIMEOUT_MS = 7500
+
 export default function Toast({ message }: { message: string | null }) {
   const [visible, setVisible] = useState(false)
-  const timeoutMs = 2500 * 3
 
   useEffect(() => {
     if (!message) return
     setVisible(true)
-    const t = setTimeout(() => setVisible(false), timeoutMs)
+    const t = setTimeout(() => setVisible(false), TOAST_TIMEOUT_MS)
     return () => clearTimeout(t)
   }, [message])
 

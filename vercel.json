@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/mapa/:path*", "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/jobs/sync-gtfs", "schedule": "17 3 * * *" }
+  ]
+}

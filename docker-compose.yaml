@@ -18,12 +18,5 @@ services:
     ports:
       - "8070:80"
 
-  tiles:
-    build:
-      context: .
-      target: tiles
-    volumes:
-      - .:/work
-
 volumes:
   node_modules:

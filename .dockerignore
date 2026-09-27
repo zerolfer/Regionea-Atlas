@@ -1,10 +1,19 @@
 **/node_modules
-.dist
 .vscode
 .git
 .DS_Store
 coverage
 .cache
+.npm-cache
+.vitest
 
-# outputs
+# Salidas generadas
 /dist
+/dev-dist
+
+# Descargas y originales geográficos locales. El snapshot publicado vive en
+# public/data/atlas y sí forma parte de la imagen web.
+/data
+*.mbtiles
+*.pmtiles
+*-journal

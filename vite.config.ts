@@ -9,15 +9,18 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: { enabled: true },
-      // includeAssets: ['favicon.ico', 'robots.txt'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallback: '/index.html',
+      },
       manifest: {
         name: 'Regionea Atlas',
         short_name: 'Regionea Atlas',
-        description: 'All regions, one atlas',
-        start_url: '/',
+        description: 'Atlas político, físico y de transporte de Asturias, España y Europa',
+        start_url: '/mapa/politico',
         display: 'standalone',
-        background_color: '#ffffff',
-        theme_color: '#0ea5e9',
+        background_color: '#f7f2e8',
+        theme_color: '#b35e37',
         icons: [
           { "src": "/favicon-64x64.png", "sizes": "64x64", "type": "image/png", "purpose": "any" },
           { "src": "/favicon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
