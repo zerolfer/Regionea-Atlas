@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import http from 'node:http'
 import https from 'node:https'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const ROOT = process.cwd()
 const OUTPUT = path.join(ROOT, 'public', 'data', 'atlas')
@@ -470,52 +471,29 @@ async function main() {
     }, 0.0012)
   })
 
-  const parishes = parroquiasRaw.features.map((feature) => {
-    const name = titleCase(feature.properties.topo_ofi)
-    const code = String(feature.properties.code).padStart(6, '0')
-    return decorate(feature, {
-      id: `es-as-parish-${code}`,
-      slug: `${slugify(feature.properties.concejo)}-${slugify(name)}`,
-      name,
-      localName: name,
-      aliases: [],
-      kind: 'parish',
-      boundaryStatus: 'statistical',
-      parentId: concejoIdByName.get(feature.properties.concejo) || 'es-as',
-      population: null,
-      areaKm2: roundMetric(feature.properties['st_area(shape)'] / 1e6),
-      density: null,
-      referenceYear: null,
-      sourceId: 'sadei-parishes',
-    }, 0.00028)
-  })
-
-  const neighborhoodsRaw = parseJavascriptGeoJson(neighborhoodsSource, 'json_Barrios_2')
-  const neighborhoodParents = new Map([
-    ['Gijón / Xixón', 'es-as-concejo-33024'],
-    ['Oviedo / Uviéu', 'es-as-concejo-33044'],
-  ])
-  const neighborhoods = neighborhoodsRaw.features
-    .filter((feature) => neighborhoodParents.has(feature.properties.parro))
+  const parishes = parroquiasRaw.features
+    .filter((feature) => !isResidualParishName(feature.properties.topo_ofi))
     .map((feature) => {
-      const name = titleCase(feature.properties.Barrio)
-      const code = String(feature.properties.CodeB).toLowerCase()
+      const name = titleCase(feature.properties.topo_ofi)
+      const code = String(feature.properties.code).padStart(6, '0')
       return decorate(feature, {
-        id: `es-as-neighborhood-${code}`,
-        slug: `${slugify(feature.properties.parro)}-${slugify(name)}`,
+        id: `es-as-parish-${code}`,
+        slug: `${slugify(feature.properties.concejo)}-${slugify(name)}`,
         name,
         localName: name,
         aliases: [],
-        kind: 'neighborhood',
+        kind: 'parish',
         boundaryStatus: 'statistical',
-        parentId: neighborhoodParents.get(feature.properties.parro),
+        parentId: concejoIdByName.get(feature.properties.concejo) || 'es-as',
         population: null,
-        areaKm2: roundMetric(geometryAreaKm2(feature.geometry)),
+        areaKm2: roundMetric(feature.properties['st_area(shape)'] / 1e6),
         density: null,
-        referenceYear: 2024,
-        sourceId: 'sadei-neighborhoods',
-      }, 0.00004)
+        referenceYear: null,
+        sourceId: 'sadei-parishes',
+      }, 0.00028)
     })
+
+  const neighborhoods = buildNeighborhoods(neighborhoodsSource)
 
   const asturiasCommunity = communities.find((feature) => feature.properties.id === 'es-ccaa-03')
   if (asturiasCommunity) {
@@ -662,6 +640,53 @@ async function main() {
   process.stdout.write(`Atlas ${VERSION}: ${catalog.length} territorios y ${physicalCatalog.length} accidentes.\n`)
 }
 
+const NEIGHBORHOOD_PARENTS = new Map([
+  ['Avilés', 'es-as-concejo-33004'],
+  ['Gijón / Xixón', 'es-as-concejo-33024'],
+  ['Langreo / Llangréu', 'es-as-concejo-33031'],
+  ['Mieres', 'es-as-concejo-33037'],
+  ['Oviedo / Uviéu', 'es-as-concejo-33044'],
+])
+
+export function buildNeighborhoods(neighborhoodsSource) {
+  const neighborhoodsRaw = parseJavascriptGeoJson(neighborhoodsSource, 'json_Barrios_2')
+  const unknownParents = [...new Set(
+    neighborhoodsRaw.features
+      .map((feature) => feature.properties.parro)
+      .filter((name) => !NEIGHBORHOOD_PARENTS.has(name)),
+  )]
+  if (unknownParents.length > 0) {
+    throw new Error(`Barrios sin concejo asociado: ${unknownParents.join(', ')}`)
+  }
+  return neighborhoodsRaw.features.map((feature) => {
+    const name = titleCase(feature.properties.Barrio)
+    const code = String(feature.properties.CodeB).toLowerCase()
+    return decorate(feature, {
+      id: `es-as-neighborhood-${code}`,
+      slug: `${slugify(feature.properties.parro)}-${slugify(name)}`,
+      name,
+      localName: name,
+      aliases: [],
+      kind: 'neighborhood',
+      boundaryStatus: 'statistical',
+      parentId: NEIGHBORHOOD_PARENTS.get(feature.properties.parro),
+      population: null,
+      areaKm2: roundMetric(geometryAreaKm2(feature.geometry)),
+      density: null,
+      referenceYear: 2024,
+      sourceId: 'sadei-neighborhoods',
+    }, 0.00004)
+  })
+}
+
+function isResidualParishName(name) {
+  const normalized = String(name || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLocaleLowerCase('es')
+  return normalized.includes('no adscrito a entidad colectiva')
+}
+
 function titleCase(value) {
   return String(value || '')
     .toLocaleLowerCase('es')
@@ -711,7 +736,12 @@ function naturalPhysical(feature, kind, extras = {}) {
   }, 0)
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exitCode = 1
-})
+const isDirectRun = process.argv[1]
+  && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error(error)
+    process.exitCode = 1
+  })
+}

@@ -4,7 +4,7 @@ Atlas cartográfico exploratorio de Asturias, con contexto de España y Europa. 
 
 ## Estado del producto
 
-- Mapa político progresivo: países europeos, comunidades y provincias españolas, ocho comarcas funcionales, 78 concejos, 859 parroquias estadísticas y 56 barrios de Gijón y Oviedo.
+- Mapa político progresivo: países europeos, comunidades y provincias españolas, ocho comarcas funcionales, 78 concejos, 857 parroquias estadísticas y 91 barrios de Avilés, Gijón, Langreo, Mieres y Oviedo.
 - Atlas físico educativo: relieve, cordilleras, picos, hidrografía y espacios protegidos con filtros independientes.
 - Transporte: CTA, ALSA y Renfe con importador GTFS, horarios reales normalizados y proxy de los tres canales GTFS-Realtime de Renfe.
 - Buscador, ruta territorial, nivel automático o manual, fichas con procedencia, comparación de hasta tres territorios, geolocalización privada y URLs compartibles.
@@ -74,7 +74,7 @@ npm run data:content
 
 Las parroquias se presentan expresamente como delimitaciones estadísticas, no como deslindes jurídicos.
 
-Los barrios de Gijón y Oviedo proceden de la capa poligonal específica que SADEI publica para las principales áreas urbanas de Asturias. Se muestran como delimitaciones estadísticas y no como deslindes jurídicos. La atribución enlaza el catálogo y el aviso legal de SADEI; el pipeline no utiliza el antiguo WFS municipal ni reconstruye polígonos a partir de puntos.
+Los barrios de Avilés, Gijón, Langreo, Mieres y Oviedo proceden de la capa poligonal específica que SADEI publica para las principales áreas urbanas de Asturias. Se muestran como delimitaciones estadísticas y no como deslindes jurídicos. La atribución enlaza el catálogo y el aviso legal de SADEI; el pipeline no utiliza el antiguo WFS municipal ni reconstruye polígonos a partir de puntos.
 
 ## Transporte
 

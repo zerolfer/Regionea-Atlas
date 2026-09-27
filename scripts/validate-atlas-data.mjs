@@ -78,8 +78,12 @@ const catalogIds = new Set(catalogEntities.map(({ id }) => id))
 assert(catalogIds.size === catalogEntities.length, 'El catálogo contiene IDs duplicados')
 assert(catalog.territories.filter(({ kind }) => kind === 'functional-region').length === 8, 'Deben existir 8 comarcas')
 assert(catalog.territories.filter(({ kind }) => kind === 'municipality').length === 78, 'Deben existir 78 concejos')
-assert(catalog.territories.filter(({ kind }) => kind === 'parish').length === 859, 'Deben existir 859 parroquias')
-assert(catalog.territories.filter(({ kind }) => kind === 'neighborhood').length === 56, 'Deben existir 56 barrios de Gijón y Oviedo')
+assert(catalog.territories.filter(({ kind }) => kind === 'parish').length === 857, 'Deben existir 857 parroquias')
+assert(
+  catalog.territories.every(({ name }) => !/no adscrito a entidad colectiva/i.test(String(name || '').normalize('NFD').replace(/\p{M}/gu, ''))),
+  'Quedan restos del nomenclátor que no son parroquias',
+)
+assert(catalog.territories.filter(({ kind }) => kind === 'neighborhood').length === 91, 'Deben existir 91 barrios de las áreas urbanas')
 
 for (const entity of catalog.territories) {
   if (entity.parentId) assert(catalogIds.has(entity.parentId), `${entity.id}: parentId roto (${entity.parentId})`)
@@ -88,7 +92,7 @@ for (const entity of catalog.territories) {
   if (entity.kind === 'parish') assert(entity.boundaryStatus === 'statistical', `${entity.id}: parroquia no estadística`)
   if (entity.kind === 'neighborhood') {
     assert(entity.boundaryStatus === 'statistical', `${entity.id}: barrio sin naturaleza estadística`)
-    assert(['es-as-concejo-33024', 'es-as-concejo-33044'].includes(entity.parentId), `${entity.id}: barrio fuera de Gijón u Oviedo`)
+    assert(['es-as-concejo-33004', 'es-as-concejo-33024', 'es-as-concejo-33031', 'es-as-concejo-33037', 'es-as-concejo-33044'].includes(entity.parentId), `${entity.id}: barrio fuera de Avilés, Gijón, Langreo, Mieres u Oviedo`)
   }
 }
 
