@@ -114,7 +114,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .mode-button { display: flex; align-items: center; gap: 7px; padding: 9px 13px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; color: var(--muted); }
 .mode-button.active { background: var(--accent); color: white; }
 .mode-icon { font-size: 18px; }
-.filter-bar { position: absolute; z-index: 22; top: 84px; left: calc(50% + 207px); transform: translateX(-50%); display: flex; max-width: calc(100vw - 470px); gap: 6px; overflow-x: auto; padding: 5px; border: 1px solid rgba(78,65,50,.15); border-radius: 13px; background: rgba(255,253,248,.92); box-shadow: 0 8px 26px rgba(51,43,34,.12); }
+.filter-bar { position: absolute; z-index: 22; top: 84px; left: 432px; right: 18px; display: flex; max-width: none; gap: 6px; overflow-x: auto; padding: 5px; border: 1px solid rgba(78,65,50,.15); border-radius: 13px; background: rgba(255,253,248,.92); box-shadow: 0 8px 26px rgba(51,43,34,.12); }
 .filter-bar { scrollbar-width: none; }
 .filter-bar::-webkit-scrollbar { display: none; }
 .filter-bar button { flex: none; padding: 7px 11px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
@@ -153,12 +153,36 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .sources-modal span { color: var(--muted); font-size: 12px; }
 .error-state { margin: 20px; padding: 16px; border: 1px solid #c98473; border-radius: 12px; background: #fff2ee; }
 
+.install-prompt {
+  position: absolute; z-index: 31; right: 18px; bottom: 82px; width: min(430px, calc(100vw - 36px));
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 11px;
+  padding: 13px 15px; border: 1px solid rgba(78,65,50,.16); border-radius: 16px;
+  background: rgba(255,253,248,.97); box-shadow: 0 18px 50px rgba(45,38,31,.2); backdrop-filter: blur(14px);
+}
+.install-prompt > img { width: 44px; height: 44px; }
+.install-prompt > div { display: grid; gap: 3px; min-width: 0; }
+.install-prompt strong { font: 700 16px Georgia, serif; }
+.install-prompt span { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.install-action { padding: 8px 11px; border: 0; border-radius: 9px; background: var(--accent); color: white; cursor: pointer; font-size: 12px; font-weight: 750; }
+.install-dismiss { position: absolute; top: -9px; right: -7px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--paper-strong); box-shadow: 0 3px 10px rgba(45,38,31,.14); color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; }
+
 .toast-container { position: absolute; z-index: 60; bottom: 18px; left: calc(50% + 207px); transform: translateX(-50%); pointer-events: none; }
 .toast { padding: 9px 14px; border-radius: 10px; background: rgba(35,31,27,.92); color: white; opacity: 0; transform: translateY(6px); transition: .2s ease; }
 .toast.show { opacity: 1; transform: translateY(0); }
 .app .maplibregl-ctrl-top-right { top: 145px; right: 18px; }
 .app.context-open .maplibregl-ctrl-top-right { right: 384px; }
 .maplibregl-ctrl-group { border-radius: 12px !important; overflow: hidden; }
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .brand { width: 52px; padding-right: 8px; }
+  .brand > span:last-child { display: none; }
+  .search-wrap { width: min(360px, 42vw); }
+  .location-button span:last-child { display: none; }
+  .location-button { width: 48px; padding: 0; justify-content: center; }
+  .side-panel { width: min(360px, calc((100vw - 54px) / 2)); }
+  .mode-switch, .toast-container { left: calc(50% + 189px); }
+  .filter-bar { left: 396px; right: 18px; }
+}
 
 @media (max-width: 760px) {
   .topbar { top: 10px; left: 10px; right: 10px; gap: 7px; }
@@ -195,6 +219,10 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
   .app.sheet-peek .compare-fab { bottom: 84px; }
   .app.sheet-full .compare-fab { bottom: calc(79vh + 12px); bottom: calc(79dvh + 12px); }
   .context-picker { z-index: 45; top: 165px; right: 10px; left: 10px; width: auto; max-height: 31vh; overflow: auto; }
+  .install-prompt { z-index: 36; right: 10px; bottom: calc(43dvh + 12px); width: calc(100vw - 20px); grid-template-columns: 38px minmax(0, 1fr) auto; gap: 9px; padding: 10px 12px; }
+  .install-prompt > img { width: 38px; height: 38px; }
+  .app.sheet-peek .install-prompt { bottom: 84px; }
+  .app.sheet-full .install-prompt { bottom: calc(79dvh + 10px); }
   .toast-container { left: 50%; bottom: calc(43vh + 14px); bottom: calc(43dvh + 14px); }
   .app.sheet-peek .toast-container { bottom: 86px; }
   .app.sheet-full .toast-container { bottom: calc(79vh + 8px); bottom: calc(79dvh + 8px); }

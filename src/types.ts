@@ -101,7 +101,7 @@ export type EditorialEntry = {
   sections: EditorialSection[]
 }
 
-export type PhysicalFilter = 'relief' | 'peaks' | 'hydrography' | 'valleys' | 'coast' | 'protected'
+export type PhysicalFilter = 'relief' | 'peaks' | 'hydrography' | 'valleys' | 'coast' | 'protected' | 'hypsometry' | 'terrain3d'
 export type TransitFreshness = 'live' | 'scheduled' | 'stale' | 'demo'
 export type TransitMode = 'bus' | 'rail' | 'ferry' | 'air'
 export type TransitExtentClass = 'urban' | 'local' | 'regional' | 'long-distance'
@@ -152,4 +152,3 @@ export type UserLocation = {
   accuracy: number
   token: number
 }
-

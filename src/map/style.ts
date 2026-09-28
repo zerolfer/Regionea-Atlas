@@ -169,6 +169,21 @@ function physicalLayers(): LayerSpecification[] {
       paint: { 'fill-color': '#6f8d64', 'fill-opacity': 0.18, 'fill-outline-color': '#52724d' },
     },
     {
+      id: 'physical-coast-areas', type: 'fill', source: 'physical-asturias', minzoom: 8,
+      filter: ['in', ['get', 'kind'], ['literal', ['bay', 'gulf', 'estuary', 'beach', 'island']]],
+      paint: { 'fill-color': '#67a3ad', 'fill-opacity': 0.22, 'fill-outline-color': '#397984' },
+    },
+    {
+      id: 'physical-coast-lines', type: 'line', source: 'physical-asturias', minzoom: 8,
+      filter: ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      paint: { 'line-color': '#397984', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 2.4], 'line-opacity': 0.82 },
+    },
+    {
+      id: 'physical-coast-points', type: 'circle', source: 'physical-asturias', minzoom: 11.5,
+      filter: ['in', ['get', 'kind'], ['literal', ['cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      paint: { 'circle-color': '#397984', 'circle-radius': 3.5, 'circle-stroke-color': '#f6f1e7', 'circle-stroke-width': 1 },
+    },
+    {
       id: 'physical-peaks', type: 'circle', source: 'physical-asturias', minzoom: 9,
       filter: ['==', ['get', 'kind'], 'peak'],
       paint: {
@@ -188,7 +203,7 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-point-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 9.4,
-      filter: ['in', ['get', 'kind'], ['literal', ['peak', 'range', 'cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      filter: ['in', ['get', 'kind'], ['literal', ['peak', 'range']]],
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 13, 13],
@@ -196,6 +211,16 @@ function physicalLayers(): LayerSpecification[] {
         'text-allow-overlap': false, 'text-ignore-placement': false,
       },
       paint: { 'text-color': '#2e2924', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'physical-coast-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 12.3,
+      filter: ['in', ['get', 'kind'], ['literal', ['cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
+        'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-max-width': 9,
+        'text-padding': 18, 'text-allow-overlap': false, 'text-ignore-placement': false,
+      },
+      paint: { 'text-color': '#285f68', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
     },
     {
       id: 'physical-area-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 9,
@@ -296,12 +321,29 @@ export function buildStyle(mode: MapMode): StyleSpecification {
       url: 'https://tiles.openfreemap.org/planet',
       attribution: 'OpenFreeMap © OpenMapTiles · Data © OpenStreetMap contributors',
     },
-    hillshade: {
-      type: 'raster',
-      tiles: ['https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}'],
+    'terrain-dem': {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
       tileSize: 256,
-      maxzoom: 13,
-      attribution: 'Esri, USGS, NGA, NASA, CGIAR, NCEAS',
+      maxzoom: 15,
+      encoding: 'terrarium',
+      attribution: 'Elevación © Mapzen · AWS Open Data',
+    },
+    'hillshade-dem': {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 15,
+      encoding: 'terrarium',
+      attribution: 'Elevación © Mapzen · AWS Open Data',
+    },
+    'hypsometry-dem': {
+      type: 'raster-dem',
+      tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+      tileSize: 256,
+      maxzoom: 15,
+      encoding: 'terrarium',
+      attribution: 'Elevación © Mapzen · AWS Open Data',
     },
     'user-location': {
       type: 'geojson',
@@ -317,7 +359,20 @@ export function buildStyle(mode: MapMode): StyleSpecification {
     { id: 'background', type: 'background', paint: { 'background-color': mode === 'physical' ? '#eee9df' : '#e9e4da' } },
     ...(mode === 'physical'
       ? [
-          { id: 'hillshade', type: 'raster', source: 'hillshade', paint: { 'raster-saturation': -0.55, 'raster-contrast': 0.08, 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.62, 13, 0.52, 16, 0.08] } } as LayerSpecification,
+          {
+            id: 'physical-hypsometry', type: 'color-relief', source: 'hypsometry-dem', layout: { visibility: 'none' },
+            paint: {
+              'color-relief-opacity': 0.5,
+              'color-relief-color': ['interpolate', ['linear'], ['elevation'], -100, '#b7d5da', 0, '#dce6d2', 200, '#c8d5aa', 500, '#c9bd84', 900, '#b39a70', 1500, '#998171', 2500, '#ddd8ce', 4000, '#fffdf8'],
+            },
+          } as LayerSpecification,
+          {
+            id: 'hillshade', type: 'hillshade', source: 'hillshade-dem',
+            paint: {
+              'hillshade-shadow-color': '#504737', 'hillshade-highlight-color': '#fffdf7', 'hillshade-accent-color': '#756b58',
+              'hillshade-exaggeration': ['interpolate', ['linear'], ['zoom'], 2, 0.22, 8, 0.38, 14, 0.28],
+            },
+          } as LayerSpecification,
           { id: 'physical-base-landcover', type: 'fill', source: 'openmaptiles', 'source-layer': 'landcover', minzoom: 7, paint: { 'fill-color': '#d8dfd1', 'fill-opacity': 0.2 } } as LayerSpecification,
           { id: 'physical-base-water', type: 'fill', source: 'openmaptiles', 'source-layer': 'water', paint: { 'fill-color': '#bdd8de', 'fill-opacity': 0.9 } } as LayerSpecification,
           { id: 'physical-base-waterways', type: 'line', source: 'openmaptiles', 'source-layer': 'waterway', minzoom: 7, paint: { 'line-color': '#7eafbb', 'line-width': 0.65, 'line-opacity': 0.6 } } as LayerSpecification,
@@ -360,7 +415,7 @@ export const POLITICAL_INTERACTIVE_LAYERS = POLITICAL_LEVEL_RANGES.flatMap(({ so
 export const PHYSICAL_INTERACTIVE_LAYERS = [
   'physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-ranges', 'physical-europe-valleys',
   'physical-europe-coasts', 'physical-europe-peaks', 'physical-europe-labels',
-  'physical-rivers', 'physical-water', 'physical-protected', 'physical-peaks',
-  'physical-river-labels', 'physical-point-labels', 'physical-area-labels',
+  'physical-rivers', 'physical-water', 'physical-protected', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points', 'physical-peaks',
+  'physical-river-labels', 'physical-point-labels', 'physical-coast-labels', 'physical-area-labels',
 ]
 export const TRANSIT_INTERACTIVE_LAYERS = ['transit-selected-route', 'transit-selected-stop', 'transit-selected-vehicle', ...TRANSIT_ROUTE_LAYERS.map(({ id }) => id), 'transit-stops-circle', 'transit-stops-labels', 'transit-vehicles-circle']

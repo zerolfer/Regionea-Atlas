@@ -5,19 +5,21 @@ import ComparePanel from './components/ComparePanel'
 import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
 import SearchBox from './components/SearchBox'
+import InstallPrompt from './components/InstallPrompt'
 import Toast from './components/Toast'
 import { bottomSheetHeight, nearestBottomSheetLevel } from './bottom-sheet'
 import { isPhysicalEntity, loadAtlasData, PHYSICAL_KIND_LABELS, TERRITORY_KIND_LABELS } from './data/atlas'
 import type { AtlasData } from './data/atlas'
 import { loadTransitCatalog } from './data/transit'
 import type { TransitCatalog } from './data/transit'
-import { ALL_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
+import { ALL_PHYSICAL_FILTERS, DEFAULT_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, SearchItem, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from './types'
 
 const MapView = lazy(() => import('./map/MapView'))
 const MODE_PATHS: Record<MapMode, string> = { political: 'politico', physical: 'fisico', transit: 'transporte' }
 const FILTER_LABELS: Record<PhysicalFilter, string> = {
   relief: 'Relieve', peaks: 'Picos', hydrography: 'Ríos y agua', valleys: 'Valles', coast: 'Costa', protected: 'Espacios protegidos',
+  hypsometry: 'Colores de altitud', terrain3d: 'Relieve 3D',
 }
 const POLITICAL_LEVEL_LABELS: Record<PoliticalLevel, string> = {
   auto: 'Automático', countries: 'Países', communities: 'Comunidades', provinces: 'Provincias',
@@ -51,6 +53,10 @@ function modeIntro(mode: MapMode, transitStatus: TransitFreshness) {
 function departureTime(value: string) {
   const [hours = '', minutes = ''] = value.split(':')
   return minutes ? `${hours}:${minutes}` : value
+}
+
+function isDefaultPhysicalFilterSet(filters: Set<PhysicalFilter>) {
+  return filters.size === DEFAULT_PHYSICAL_FILTERS.length && DEFAULT_PHYSICAL_FILTERS.every((filter) => filters.has(filter))
 }
 
 export default function App() {
@@ -187,7 +193,7 @@ export default function App() {
       const params = new URLSearchParams()
       if (selectedId) params.set('seleccion', selectedId)
       if (compareIds.length) params.set('comparar', compareIds.join(','))
-      if (mode === 'physical' && physicalFilters.size !== ALL_PHYSICAL_FILTERS.length) params.set('filtros', [...physicalFilters].join(','))
+      if (mode === 'physical' && !isDefaultPhysicalFilterSet(physicalFilters)) params.set('filtros', [...physicalFilters].join(','))
       if (mode === 'political' && politicalLevel !== 'auto') params.set('nivel', politicalLevel)
       if (mode === 'transit') {
         if (transitFilters.providers.size && transitFilters.providers.size !== transitCatalog.providers.length) params.set('fuentes', [...transitFilters.providers].join(','))
@@ -404,7 +410,7 @@ export default function App() {
 
       <header className="topbar">
         <button className="brand" onClick={() => { setCompareOpen(false); setSelectedId(null); setTransitSelection(null) }} aria-label="Inicio de Regionea Atlas">
-          <span className="brand-mark" aria-hidden="true"><img src="/favicon-192x192.png" alt="" /></span>
+          <span className="brand-mark" aria-hidden="true"><img src="/favicon.svg" alt="" /></span>
           <span><strong>Regionea</strong><small>Atlas</small></span>
         </button>
         <SearchBox key={mode} items={searchItems} mode={mode} onSelect={selectSearchItem} />
@@ -480,6 +486,7 @@ export default function App() {
           </section>
         </div>
       )}
+      <InstallPrompt />
       <Toast message={toast} />
       <Analytics />
     </main>

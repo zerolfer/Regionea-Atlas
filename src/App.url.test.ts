@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { parseInitialUrl } from './url-state'
+import { DEFAULT_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
 
 afterEach(() => window.history.replaceState({}, '', '/'))
 
@@ -43,4 +43,14 @@ describe('estado compartible del atlas', () => {
     expect([...state.transitModes]).toEqual(['bus', 'rail'])
     expect(state.showRealtime).toBe(false)
   })
+})
+
+it('keeps optional elevation layers disabled in the default physical view', () => {
+  window.history.replaceState({}, '', '/mapa/fisico')
+
+  const state = parseInitialUrl()
+
+  expect([...state.filters]).toEqual(DEFAULT_PHYSICAL_FILTERS)
+  expect(state.filters.has('hypsometry')).toBe(false)
+  expect(state.filters.has('terrain3d')).toBe(false)
 })
