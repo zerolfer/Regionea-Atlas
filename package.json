@@ -10,8 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run && node scripts/validate-atlas-data.mjs",
     "test:watch": "vitest",
-    "data:sync": "node scripts/sync-atlas-data.mjs && node scripts/build-content.mjs && node scripts/ensure-demo-transit.mjs && node scripts/validate-atlas-data.mjs",
-    "data:publish": "node scripts/build-content.mjs && node scripts/ensure-demo-transit.mjs && node scripts/validate-atlas-data.mjs",
+    "data:sync": "node scripts/sync-atlas-data.mjs && node scripts/refine-physical-snapshot.mjs && node scripts/build-content.mjs && node scripts/ensure-demo-transit.mjs && node scripts/validate-atlas-data.mjs",
+    "data:publish": "node scripts/refine-physical-snapshot.mjs && node scripts/build-content.mjs && node scripts/ensure-demo-transit.mjs && node scripts/validate-atlas-data.mjs",
+    "data:physical:refine": "node scripts/refine-physical-snapshot.mjs",
     "data:content": "node scripts/build-content.mjs",
     "data:validate": "node scripts/validate-atlas-data.mjs",
     "data:import-gtfs": "node scripts/import-gtfs.mjs"

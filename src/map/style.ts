@@ -33,7 +33,7 @@ function politicalLayers(): LayerSpecification[] {
       },
     },
     {
-      id: `${source}-hit`, type: 'fill', source, minzoom: 0, maxzoom: 24,
+      id: `${source}-hit`, type: 'fill', source, minzoom: min, maxzoom: max,
       paint: { 'fill-color': '#000000', 'fill-opacity': 0.001 },
     },
     {
@@ -44,7 +44,7 @@ function politicalLayers(): LayerSpecification[] {
       id: `${source}-labels`, type: 'symbol', source: 'territory-labels', minzoom: min, maxzoom: max,
       filter: ['==', ['get', 'kind'], kind],
       layout: {
-        'text-field': ['coalesce', ['get', 'localName'], ['get', 'name']],
+        'text-field': kind === 'functional-region' ? ['get', 'name'] : ['coalesce', ['get', 'localName'], ['get', 'name']],
         'text-font': ['Noto Sans Regular'],
         'text-size': ['interpolate', ['linear'], ['zoom'], min, label - 1, Math.min(max, min + 2), label + 1],
         'text-max-width': 9,
@@ -57,6 +57,11 @@ function politicalLayers(): LayerSpecification[] {
       id: `${source}-selected`, type: 'line', source, minzoom: Math.max(0, min - 3), maxzoom: 24,
       filter: selectedFilter,
       paint: { 'line-color': '#d95d39', 'line-width': 3.2, 'line-opacity': 1 },
+    },
+    {
+      id: `${source}-compared`, type: 'line', source, minzoom: 0, maxzoom: 24,
+      filter: ['in', ['get', 'id'], ['literal', []]],
+      paint: { 'line-color': '#5c467d', 'line-width': 3, 'line-opacity': 0.95, 'line-dasharray': [2, 1.4] },
     },
   ] as LayerSpecification[])
 }
@@ -141,7 +146,7 @@ function physicalLayers(): LayerSpecification[] {
       paint: { 'circle-color': '#44382f', 'circle-radius': 3, 'circle-stroke-color': '#f6f1e7', 'circle-stroke-width': 0.8 },
     },
     {
-      id: 'physical-europe-labels', type: 'symbol', source: 'physical-europe', minzoom: 3.5, maxzoom: 9,
+      id: 'physical-europe-labels', type: 'symbol', source: 'physical-europe-labels', minzoom: 3.5, maxzoom: 9,
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
         'text-max-width': 9, 'text-padding': 3, 'text-allow-overlap': false,
@@ -164,11 +169,6 @@ function physicalLayers(): LayerSpecification[] {
       paint: { 'fill-color': '#6f8d64', 'fill-opacity': 0.18, 'fill-outline-color': '#52724d' },
     },
     {
-      id: 'physical-ranges', type: 'circle', source: 'physical-asturias', minzoom: 8.2,
-      filter: ['==', ['get', 'kind'], 'range'],
-      paint: { 'circle-color': '#725841', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4], 'circle-opacity': 0.68 },
-    },
-    {
       id: 'physical-peaks', type: 'circle', source: 'physical-asturias', minzoom: 9,
       filter: ['==', ['get', 'kind'], 'peak'],
       paint: {
@@ -177,11 +177,32 @@ function physicalLayers(): LayerSpecification[] {
       },
     },
     {
-      id: 'physical-labels', type: 'symbol', source: 'physical-asturias', minzoom: 9.4,
+      id: 'physical-river-labels', type: 'symbol', source: 'physical-asturias', minzoom: 10,
+      filter: ['==', ['get', 'kind'], 'river'],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 650,
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
+        'text-padding': 18, 'text-allow-overlap': false,
+      },
+      paint: { 'text-color': '#296f8a', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'physical-point-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 9.4,
+      filter: ['in', ['get', 'kind'], ['literal', ['peak', 'range', 'cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 13, 13],
         'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-max-width': 10,
+        'text-allow-overlap': false, 'text-ignore-placement': false,
+      },
+      paint: { 'text-color': '#2e2924', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'physical-area-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 9,
+      filter: ['in', ['get', 'kind'], ['literal', ['lake', 'reservoir', 'protected-area']]],
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
+        'text-max-width': 10, 'text-padding': 12, 'text-allow-overlap': false,
       },
       paint: { 'text-color': '#2e2924', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
     },
@@ -197,6 +218,11 @@ function physicalLayers(): LayerSpecification[] {
     {
       id: 'physical-selected-fill', type: 'line', source: 'physical-asturias', minzoom: 0,
       filter: selectedFilter, paint: { 'line-color': '#e45c37', 'line-width': 3 },
+    },
+    {
+      id: 'physical-related-peaks', type: 'circle', source: 'physical-asturias', minzoom: 0,
+      filter: ['in', ['get', 'id'], ['literal', []]],
+      paint: { 'circle-color': '#e8a73a', 'circle-radius': 6, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 },
     },
     {
       id: 'physical-europe-selected-point', type: 'circle', source: 'physical-europe', minzoom: 0,
@@ -217,22 +243,39 @@ function physicalLayers(): LayerSpecification[] {
 function transitLayers(): LayerSpecification[] {
   return [
     {
-      id: 'transit-routes-line', type: 'line', source: 'transit-routes', minzoom: 7,
+      id: 'transit-routes-overview', type: 'line', source: 'transit-routes', minzoom: 6.5, maxzoom: 8.7,
+      filter: ['==', ['coalesce', ['get', 'transportMode'], ['case', ['==', ['get', 'provider'], 'RENFE'], 'rail', 'bus']], 'rail'],
       paint: {
         'line-color': ['coalesce', ['get', 'color'], '#316b8c'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 7, 2, 12, 5],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 6.5, 1.4, 8.7, 2.4],
         'line-opacity': 0.86,
       },
     },
     {
-      id: 'transit-stops-circle', type: 'circle', source: 'transit-stops', minzoom: 8.4,
+      id: 'transit-routes-line', type: 'line', source: 'transit-routes', minzoom: 8.5,
       paint: {
-        'circle-color': '#f7f2e8', 'circle-stroke-color': ['coalesce', ['get', 'color'], '#316b8c'],
-        'circle-stroke-width': 2, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 3, 12, 6],
+        'line-color': ['coalesce', ['get', 'color'], '#316b8c'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 8.5, ['case', ['==', ['coalesce', ['get', 'transportMode'], 'bus'], 'rail'], 2, 0.7], 10.5, 4.5],
+        'line-opacity': [
+          'interpolate', ['linear'], ['zoom'], 8.5,
+          ['case',
+            ['==', ['coalesce', ['get', 'transportMode'], 'bus'], 'rail'], 0.82,
+            ['==', ['coalesce', ['get', 'scope'], 'regional'], 'local'], 0.16,
+            0.48,
+          ],
+          10.5, 0.86,
+        ],
       },
     },
     {
-      id: 'transit-stops-labels', type: 'symbol', source: 'transit-stops', minzoom: 11,
+      id: 'transit-stops-circle', type: 'circle', source: 'transit-stops', minzoom: 10,
+      paint: {
+        'circle-color': '#f7f2e8', 'circle-stroke-color': ['coalesce', ['get', 'color'], '#316b8c'],
+        'circle-stroke-width': 1.5, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 2.5, 13, 5.5],
+      },
+    },
+    {
+      id: 'transit-stops-labels', type: 'symbol', source: 'transit-stops', minzoom: 12,
       layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'text-offset': [0, 1], 'text-anchor': 'top' },
       paint: { 'text-color': '#25313a', 'text-halo-color': '#f7f2e8', 'text-halo-width': 1.2 },
     },
@@ -248,6 +291,10 @@ function transitLayers(): LayerSpecification[] {
       id: 'transit-selected-stop', type: 'circle', source: 'transit-stops', minzoom: 0,
       filter: selectedFilter, paint: { 'circle-color': '#e45c37', 'circle-radius': 9, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 },
     },
+    {
+      id: 'transit-selected-vehicle', type: 'circle', source: 'transit-vehicles', minzoom: 0,
+      filter: selectedFilter, paint: { 'circle-color': '#e45c37', 'circle-radius': 10, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2.5 },
+    },
   ]
 }
 
@@ -262,6 +309,7 @@ export function buildStyle(mode: MapMode): StyleSpecification {
       type: 'raster',
       tiles: ['https://services.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
+      maxzoom: 13,
       attribution: 'Esri, USGS, NGA, NASA, CGIAR, NCEAS',
     },
     'user-location': {
@@ -275,9 +323,16 @@ export function buildStyle(mode: MapMode): StyleSpecification {
   sources['territory-labels'] = { type: 'geojson', data: '/data/atlas/territories/labels.geojson', generateId: false }
 
   const layers: LayerSpecification[] = [
-    { id: 'background', type: 'background', paint: { 'background-color': '#e9e4da' } },
+    { id: 'background', type: 'background', paint: { 'background-color': mode === 'physical' ? '#eee9df' : '#e9e4da' } },
     ...(mode === 'physical'
-      ? [{ id: 'hillshade', type: 'raster', source: 'hillshade', paint: { 'raster-saturation': -0.45, 'raster-contrast': 0.08 } } as LayerSpecification]
+      ? [
+          { id: 'hillshade', type: 'raster', source: 'hillshade', paint: { 'raster-saturation': -0.55, 'raster-contrast': 0.08, 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.62, 13, 0.52, 16, 0.08] } } as LayerSpecification,
+          { id: 'physical-base-landcover', type: 'fill', source: 'openmaptiles', 'source-layer': 'landcover', minzoom: 7, paint: { 'fill-color': '#d8dfd1', 'fill-opacity': 0.2 } } as LayerSpecification,
+          { id: 'physical-base-water', type: 'fill', source: 'openmaptiles', 'source-layer': 'water', paint: { 'fill-color': '#bdd8de', 'fill-opacity': 0.9 } } as LayerSpecification,
+          { id: 'physical-base-waterways', type: 'line', source: 'openmaptiles', 'source-layer': 'waterway', minzoom: 7, paint: { 'line-color': '#7eafbb', 'line-width': 0.65, 'line-opacity': 0.6 } } as LayerSpecification,
+          { id: 'physical-base-roads', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation', minzoom: 10, filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor']]], paint: { 'line-color': '#bbb3a8', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.35, 16, 1.1], 'line-opacity': 0.42 } } as LayerSpecification,
+          { id: 'physical-base-buildings', type: 'fill', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14, paint: { 'fill-color': '#cfc8bd', 'fill-opacity': 0.3 } } as LayerSpecification,
+        ]
       : silentBaseLayers()),
   ]
 
@@ -285,6 +340,8 @@ export function buildStyle(mode: MapMode): StyleSpecification {
   if (mode === 'physical') {
     sources['physical-europe'] = { type: 'geojson', data: '/data/atlas/physical/europe.geojson' }
     sources['physical-asturias'] = { type: 'geojson', data: '/data/atlas/physical/asturias.geojson' }
+    sources['physical-europe-labels'] = { type: 'geojson', data: '/data/atlas/physical/labels-europe.geojson' }
+    sources['physical-asturias-labels'] = { type: 'geojson', data: '/data/atlas/physical/labels-asturias.geojson' }
     layers.push(...contextTerritoryLayers(), ...physicalLayers())
   }
   if (mode === 'transit') {
@@ -312,6 +369,7 @@ export const POLITICAL_INTERACTIVE_LAYERS = POLITICAL_LEVEL_RANGES.flatMap(({ so
 export const PHYSICAL_INTERACTIVE_LAYERS = [
   'physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-ranges', 'physical-europe-valleys',
   'physical-europe-coasts', 'physical-europe-peaks', 'physical-europe-labels',
-  'physical-rivers', 'physical-water', 'physical-protected', 'physical-ranges', 'physical-peaks', 'physical-labels',
+  'physical-rivers', 'physical-water', 'physical-protected', 'physical-peaks',
+  'physical-river-labels', 'physical-point-labels', 'physical-area-labels',
 ]
-export const TRANSIT_INTERACTIVE_LAYERS = ['transit-routes-line', 'transit-stops-circle', 'transit-stops-labels', 'transit-vehicles-circle']
+export const TRANSIT_INTERACTIVE_LAYERS = ['transit-selected-route', 'transit-selected-stop', 'transit-selected-vehicle', 'transit-routes-line', 'transit-routes-overview', 'transit-stops-circle', 'transit-stops-labels', 'transit-vehicles-circle']

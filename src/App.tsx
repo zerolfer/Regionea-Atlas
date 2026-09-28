@@ -1,16 +1,18 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import ComparePanel from './components/ComparePanel'
 import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
 import SearchBox from './components/SearchBox'
 import Toast from './components/Toast'
+import { bottomSheetHeight, nearestBottomSheetLevel } from './bottom-sheet'
 import { isPhysicalEntity, loadAtlasData, PHYSICAL_KIND_LABELS, TERRITORY_KIND_LABELS } from './data/atlas'
 import type { AtlasData } from './data/atlas'
+import { loadTransitCatalog } from './data/transit'
+import type { TransitCatalog } from './data/transit'
 import { ALL_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
-import type { AtlasEntity, BottomSheetLevel, MapMode, MapSelection, PhysicalFilter, PoliticalLevel, TransitFreshness, UserLocation, ViewState } from './types'
-
-type TransitSelection = Extract<MapSelection, { type: 'route' | 'stop' | 'vehicle' }>
+import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, SearchItem, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from './types'
 
 const MapView = lazy(() => import('./map/MapView'))
 const MODE_PATHS: Record<MapMode, string> = { political: 'politico', physical: 'fisico', transit: 'transporte' }
@@ -21,7 +23,7 @@ const POLITICAL_LEVEL_LABELS: Record<PoliticalLevel, string> = {
   auto: 'Automático', countries: 'Países', communities: 'Comunidades', provinces: 'Provincias',
   comarcas: 'Comarcas', concejos: 'Concejos', parishes: 'Parroquias', neighborhoods: 'Barrios',
 }
-
+const TRANSIT_MODE_LABELS: Record<TransitMode, string> = { bus: 'Autobús', rail: 'Tren', ferry: 'Barco', air: 'Avión' }
 const TRANSIT_STATUS_COPY: Record<TransitFreshness, { title: string; text: string }> = {
   demo: { title: 'Datos de demostración', text: 'Se sustituirán automáticamente al importar los GTFS del NAP.' },
   scheduled: { title: 'Horario programado', text: 'Información procedente del último GTFS estático válido.' },
@@ -46,6 +48,11 @@ function modeIntro(mode: MapMode, transitStatus: TransitFreshness) {
   }
 }
 
+function departureTime(value: string) {
+  const [hours = '', minutes = ''] = value.split(':')
+  return minutes ? `${hours}:${minutes}` : value
+}
+
 export default function App() {
   const initial = useMemo(parseInitialUrl, [])
   const [atlas, setAtlas] = useState<AtlasData | null>(null)
@@ -65,6 +72,16 @@ export default function App() {
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const [sheetLevel, setSheetLevel] = useState<BottomSheetLevel>('half')
   const [transitDatasetStatus, setTransitDatasetStatus] = useState<TransitFreshness>('demo')
+  const [transitCatalog, setTransitCatalog] = useState<TransitCatalog>({ items: [], providers: [], modes: [] })
+  const [transitFilters, setTransitFilters] = useState<TransitFilters>({
+    providers: initial.transitProviders,
+    modes: initial.transitModes,
+    showRealtime: initial.showRealtime,
+  })
+  const [focusRequestToken, setFocusRequestToken] = useState(0)
+  const [sheetDragHeight, setSheetDragHeight] = useState<number | null>(null)
+  const sheetDrag = useRef<{ pointerId: number; startY: number; startHeight: number; currentHeight: number; moved: boolean } | null>(null)
+  const suppressSheetClick = useRef(false)
   const [departures, setDepartures] = useState<Array<{
     route: string
     destination: string
@@ -82,6 +99,21 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const controller = new AbortController()
+    loadTransitCatalog(controller.signal).then((catalog) => {
+      setTransitCatalog(catalog)
+      setTransitFilters((current) => ({
+        ...current,
+        providers: current.providers.size ? current.providers : new Set(catalog.providers),
+        modes: current.modes.size ? current.modes : new Set(catalog.modes),
+      }))
+    }).catch((error) => {
+      if (error.name !== 'AbortError') setToast('No se pudo preparar el buscador de transporte')
+    })
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
     fetch('/data/atlas/transit/manifest.json')
       .then((response) => response.ok ? response.json() : null)
       .then((manifest) => {
@@ -91,8 +123,21 @@ export default function App() {
   }, [])
 
   const selected = selectedId ? atlas?.entitiesById.get(selectedId) || null : null
-  const compared = compareIds.map((id) => atlas?.entitiesById.get(id)).filter((entity): entity is AtlasEntity => Boolean(entity))
-  const searchPool = atlas ? [...atlas.territories, ...atlas.physical] : []
+  const compared = useMemo(
+    () => compareIds.map((id) => atlas?.entitiesById.get(id)).filter((entity): entity is AtlasEntity => Boolean(entity)),
+    [atlas, compareIds],
+  )
+  const searchItems = useMemo<SearchItem[]>(() => {
+    if (mode === 'transit') return transitCatalog.items
+    const entities = mode === 'physical' ? atlas?.physical : atlas?.territories
+    return (entities || []).map((entity) => ({
+      id: entity.id,
+      name: entity.name,
+      aliases: [entity.localName || '', ...entity.aliases].filter(Boolean),
+      kindLabel: PHYSICAL_KIND_LABELS[entity.kind] || TERRITORY_KIND_LABELS[entity.kind] || entity.kind,
+      atlasEntity: entity,
+    }))
+  }, [atlas, mode, transitCatalog.items])
   const source = selected ? atlas?.manifest.sources.find((item) => item.id === selected.sourceId) : undefined
   const parent = selected?.parentId ? atlas?.entitiesById.get(selected.parentId) : undefined
   const ancestors = useMemo(() => {
@@ -105,6 +150,18 @@ export default function App() {
     }
     return result
   }, [selected, atlas])
+  const relatedPeaks = useMemo(() => {
+    if (!atlas || selected?.kind !== 'range' || !selected.center) return []
+    const [longitude, latitude] = selected.center
+    return atlas.physical
+      .filter((entity) => entity.kind === 'peak' && entity.center)
+      .map((entity) => ({ entity, distance: Math.hypot((entity.center![0] - longitude) * 0.73, entity.center![1] - latitude) }))
+      .filter(({ distance }) => distance < 0.28)
+      .sort((a, b) => (b.entity.elevationM || 0) - (a.entity.elevationM || 0) || a.distance - b.distance)
+      .slice(0, 6)
+      .map(({ entity }) => entity)
+  }, [atlas, selected])
+  const relatedPhysicalIds = useMemo(() => relatedPeaks.map(({ id }) => id), [relatedPeaks])
 
   const setMode = useCallback((nextMode: MapMode) => {
     setModeState(nextMode)
@@ -132,13 +189,18 @@ export default function App() {
       if (compareIds.length) params.set('comparar', compareIds.join(','))
       if (mode === 'physical' && physicalFilters.size !== ALL_PHYSICAL_FILTERS.length) params.set('filtros', [...physicalFilters].join(','))
       if (mode === 'political' && politicalLevel !== 'auto') params.set('nivel', politicalLevel)
+      if (mode === 'transit') {
+        if (transitFilters.providers.size && transitFilters.providers.size !== transitCatalog.providers.length) params.set('fuentes', [...transitFilters.providers].join(','))
+        if (transitFilters.modes.size && transitFilters.modes.size !== transitCatalog.modes.length) params.set('transportes', [...transitFilters.modes].join(','))
+        if (!transitFilters.showRealtime) params.set('tiempoReal', '0')
+      }
       params.set('lng', view.center[0].toFixed(4))
       params.set('lat', view.center[1].toFixed(4))
       params.set('z', view.zoom.toFixed(2))
       window.history.replaceState({}, '', `/mapa/${MODE_PATHS[mode]}?${params.toString()}`)
     }, 220)
     return () => window.clearTimeout(timer)
-  }, [mode, selectedId, compareIds, physicalFilters, politicalLevel, view])
+  }, [mode, selectedId, compareIds, physicalFilters, politicalLevel, transitCatalog.modes.length, transitCatalog.providers.length, transitFilters, view])
 
   useEffect(() => {
     const onPopState = () => {
@@ -148,6 +210,7 @@ export default function App() {
       setCompareIds(next.compareIds)
       setPhysicalFilters(next.filters)
       setPoliticalLevel(next.politicalLevel)
+      setTransitFilters({ providers: next.transitProviders, modes: next.transitModes, showRealtime: next.showRealtime })
       setView(next.view)
       setExternalViewRequest({ view: next.view, token: Date.now() })
     }
@@ -183,13 +246,26 @@ export default function App() {
     return () => { active = false; window.clearInterval(interval) }
   }, [transitSelection])
 
-  function selectEntity(entity: AtlasEntity) {
+  function selectEntity(entity: AtlasEntity, focus = true) {
     setCompareOpen(false)
     setTransitSelection(null)
     setContextIds([])
     if (isPhysicalEntity(entity) && mode !== 'physical') setModeState('physical')
     if (!isPhysicalEntity(entity) && mode !== 'political') setModeState('political')
     setSelectedId(entity.id)
+    if (focus) setFocusRequestToken(Date.now())
+  }
+
+  function selectSearchItem(item: SearchItem) {
+    if (item.atlasEntity) selectEntity(item.atlasEntity)
+    if (item.transitSelection) {
+      setModeState('transit')
+      setCompareOpen(false)
+      setSelectedId(null)
+      setContextIds([])
+      setTransitSelection(item.transitSelection)
+      setFocusRequestToken(Date.now())
+    }
   }
 
   function handleEntityClick(ids: string[]) {
@@ -219,8 +295,6 @@ export default function App() {
   function locate(showFeedback = true) {
     if (!navigator.geolocation) { setToast('Este navegador no permite utilizar la ubicación'); return }
     if (showFeedback) setToast('Buscando tu territorio…')
-    setModeState('political')
-    setPoliticalLevel('auto')
     navigator.geolocation.getCurrentPosition(
       (position) => setLocateRequest({
         coordinates: [position.coords.longitude, position.coords.latitude],
@@ -236,6 +310,64 @@ export default function App() {
     setSheetLevel((current) => current === 'peek' ? 'half' : current === 'half' ? 'full' : 'peek')
   }
 
+  function sheetHeight(level: BottomSheetLevel) {
+    return bottomSheetHeight(level, window.visualViewport?.height ?? window.innerHeight)
+  }
+
+  function startSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (window.innerWidth > 760) return
+    const measuredHeight = event.currentTarget.parentElement?.getBoundingClientRect().height ?? sheetHeight(sheetLevel)
+    event.currentTarget.setPointerCapture(event.pointerId)
+    sheetDrag.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: measuredHeight,
+      currentHeight: measuredHeight,
+      moved: false,
+    }
+    setSheetDragHeight(measuredHeight)
+  }
+
+  function moveSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = sheetDrag.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const nextHeight = Math.max(sheetHeight('peek'), Math.min(sheetHeight('full'), drag.startHeight + drag.startY - event.clientY))
+    if (Math.abs(event.clientY - drag.startY) > 5) drag.moved = true
+    drag.currentHeight = nextHeight
+    setSheetDragHeight(nextHeight)
+  }
+
+  function endSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = sheetDrag.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    const nearest = nearestBottomSheetLevel(drag.currentHeight, window.visualViewport?.height ?? window.innerHeight)
+    sheetDrag.current = null
+    setSheetDragHeight(null)
+    if (drag.moved) {
+      suppressSheetClick.current = true
+      setSheetLevel(nearest)
+      window.setTimeout(() => { suppressSheetClick.current = false }, 0)
+    }
+  }
+
+  function toggleTransitProvider(provider: string) {
+    setTransitFilters((current) => {
+      const providers = new Set(current.providers)
+      if (providers.has(provider)) providers.delete(provider)
+      else providers.add(provider)
+      return { ...current, providers }
+    })
+  }
+
+  function toggleTransitMode(transportMode: TransitMode) {
+    setTransitFilters((current) => {
+      const modes = new Set(current.modes)
+      if (modes.has(transportMode)) modes.delete(transportMode)
+      else modes.add(transportMode)
+      return { ...current, modes }
+    })
+  }
+
   function handleLocateMatches(ids: string[]) {
     const valid = ids.filter((id) => atlas?.entitiesById.has(id))
     if (!valid.length) setToast('Tu ubicación queda fuera de las divisiones cargadas')
@@ -246,19 +378,24 @@ export default function App() {
   const intro = modeIntro(mode, transitDatasetStatus)
 
   return (
-    <main className={`app mode-${mode} ${contextIds.length ? 'context-open' : ''}`}>
+    <main className={`app mode-${mode} sheet-${sheetLevel} ${contextIds.length ? 'context-open' : ''}`}>
       <Suspense fallback={<div className="map-loading">Preparando el atlas…</div>}>
         <MapView
           mode={mode}
           selected={selected}
+          transitSelection={transitSelection}
+          compared={compareOpen ? compared : []}
+          relatedPhysicalIds={relatedPhysicalIds}
           physicalFilters={physicalFilters}
+          transitFilters={transitFilters}
           politicalLevel={politicalLevel}
           locateRequest={locateRequest}
           sheetLevel={sheetLevel}
           initialView={initial.view}
           externalViewRequest={externalViewRequest}
+          focusRequestToken={focusRequestToken}
           onEntityClick={handleEntityClick}
-          onTransitClick={(type, id, name, provider, freshness) => { setCompareOpen(false); setSelectedId(null); setContextIds([]); setTransitSelection({ type, id, name, provider, freshness }) }}
+          onTransitClick={(selection) => { setCompareOpen(false); setSelectedId(null); setContextIds([]); setTransitSelection(selection) }}
           onViewportChange={setView}
           onLocateMatches={handleLocateMatches}
           onToast={setToast}
@@ -270,12 +407,23 @@ export default function App() {
           <span className="brand-mark" aria-hidden="true"><img src="/favicon-192x192.png" alt="" /></span>
           <span><strong>Regionea</strong><small>Atlas</small></span>
         </button>
-        <SearchBox entities={searchPool} onSelect={selectEntity} />
+        <SearchBox key={mode} items={searchItems} mode={mode} onSelect={selectSearchItem} />
         <button className="location-button" onClick={() => locate()}><span aria-hidden="true">⌾</span><span>Ver mi territorio</span></button>
       </header>
 
-      <aside className={`side-panel sheet-${sheetLevel} ${selected || transitSelection || compareOpen ? 'has-content' : ''}`}>
-        <button className="sheet-handle" onClick={cycleSheetLevel} aria-label={`Panel ${sheetLevel === 'peek' ? 'mínimo; ampliar' : sheetLevel === 'half' ? 'medio; ampliar' : 'completo; reducir'}`}><span /></button>
+      <aside
+        className={`side-panel sheet-${sheetLevel} ${sheetDragHeight != null ? 'is-dragging' : ''} ${selected || transitSelection || compareOpen ? 'has-content' : ''}`}
+        style={sheetDragHeight == null ? undefined : { '--sheet-drag-height': `${sheetDragHeight}px` } as CSSProperties}
+      >
+        <button
+          className="sheet-handle"
+          onClick={() => { if (!suppressSheetClick.current) cycleSheetLevel() }}
+          onPointerDown={startSheetDrag}
+          onPointerMove={moveSheetDrag}
+          onPointerUp={endSheetDrag}
+          onPointerCancel={endSheetDrag}
+          aria-label={`Panel ${sheetLevel === 'peek' ? 'mínimo; ampliar' : sheetLevel === 'half' ? 'medio; ampliar' : 'completo; reducir'}`}
+        ><span /></button>
         <div className="panel-scroll">
           {loadingError && <div className="error-state"><strong>No se pudo abrir el catálogo.</strong><p>{loadingError}</p></div>}
           {!selected && !transitSelection && !compareOpen && (
@@ -289,13 +437,13 @@ export default function App() {
               </div>
             </section>
           )}
-          {!compareOpen && selected && <EntityPanel entity={selected} editorial={atlas?.editorial[selected.id]} source={source} datasetDate={atlas?.manifest.generatedAt} parent={parent} ancestors={ancestors} compared={compareIds.includes(selected.id)} onNavigate={selectEntity} onCompare={() => toggleCompare(selected)} onClose={() => setSelectedId(null)} />}
+          {!compareOpen && selected && <EntityPanel entity={selected} editorial={atlas?.editorial[selected.id]} source={source} datasetDate={atlas?.manifest.generatedAt} parent={parent} ancestors={ancestors} related={relatedPeaks} compared={compareIds.includes(selected.id)} onNavigate={selectEntity} onCompare={() => toggleCompare(selected)} onClose={() => setSelectedId(null)} />}
           {!compareOpen && transitSelection && (
             <article className="entity-panel transit-detail">
               <div className="panel-kicker-row"><span className="eyebrow">{transitSelection.type === 'stop' ? 'Parada' : transitSelection.type === 'route' ? 'Línea' : 'Vehículo'}</span><button className="icon-button" onClick={() => setTransitSelection(null)} aria-label="Cerrar ficha de transporte">×</button></div>
               <h1>{transitSelection.name}</h1><p className="local-name">{transitSelection.provider}</p>
               <div className="demo-notice"><strong>{TRANSIT_STATUS_COPY[transitSelection.freshness].title}</strong><span>{TRANSIT_STATUS_COPY[transitSelection.freshness].text}</span></div>
-              {transitSelection.type === 'stop' && <section className="departures"><h2>Próximas salidas</h2>{departures.length ? departures.map((departure) => <div key={`${departure.route}-${departure.scheduledTime}`}><strong>{departure.scheduledTime}</strong><span>{departure.route} · {departure.destination}</span><small>{departure.freshness === 'live' ? 'en vivo' : departure.freshness === 'stale' ? 'tiempo real desactualizado' : departure.freshness === 'demo' ? 'programado · demo' : 'programado'}{departure.delaySeconds ? ` · ${Math.round(departure.delaySeconds / 60)} min` : ''}</small></div>) : <p>No hay salidas cargadas.</p>}</section>}
+              {transitSelection.type === 'stop' && <section className="departures"><h2>Próximas salidas</h2>{departures.length ? departures.map((departure, index) => <div key={`${departure.route}-${departure.scheduledTime}-${departure.destination}-${index}`}><strong>{departureTime(departure.scheduledTime)}</strong><span>{departure.route} · {departure.destination}</span><small>{departure.freshness === 'live' ? 'en vivo' : departure.freshness === 'stale' ? 'tiempo real desactualizado' : departure.freshness === 'demo' ? 'programado · demo' : 'programado'}{departure.delaySeconds ? ` · ${Math.round(departure.delaySeconds / 60)} min` : ''}</small></div>) : <p>No hay salidas cargadas.</p>}</section>}
             </article>
           )}
           {compareOpen && <ComparePanel entities={compared} onRemove={(id) => setCompareIds((current) => current.filter((item) => item !== id))} onClose={() => setCompareOpen(false)} />}
@@ -305,13 +453,20 @@ export default function App() {
 
       {mode === 'physical' && <div className="filter-bar" aria-label="Filtros del mapa físico">{ALL_PHYSICAL_FILTERS.map((filter) => <button key={filter} className={physicalFilters.has(filter) ? 'active' : ''} aria-pressed={physicalFilters.has(filter)} onClick={() => toggleFilter(filter)}>{FILTER_LABELS[filter]}</button>)}</div>}
       {mode === 'political' && <div className="filter-bar level-bar" aria-label="Nivel territorial">{(Object.keys(POLITICAL_LEVEL_LABELS) as PoliticalLevel[]).map((level) => <button key={level} className={politicalLevel === level ? 'active' : ''} aria-pressed={politicalLevel === level} onClick={() => setPoliticalLevel(level)}>{POLITICAL_LEVEL_LABELS[level]}</button>)}</div>}
+      {mode === 'transit' && <div className="filter-bar transit-filter-bar" aria-label="Filtros de transporte">
+        {transitCatalog.modes.map((transportMode) => <button key={transportMode} className={transitFilters.modes.has(transportMode) ? 'active' : ''} aria-pressed={transitFilters.modes.has(transportMode)} onClick={() => toggleTransitMode(transportMode)}>{TRANSIT_MODE_LABELS[transportMode]}</button>)}
+        <span className="filter-divider" aria-hidden="true" />
+        {transitCatalog.providers.map((provider) => <button key={provider} className={transitFilters.providers.has(provider) ? 'active' : ''} aria-pressed={transitFilters.providers.has(provider)} onClick={() => toggleTransitProvider(provider)}>{provider}</button>)}
+        <span className="filter-divider" aria-hidden="true" />
+        <button className={transitFilters.showRealtime ? 'active' : ''} aria-pressed={transitFilters.showRealtime} onClick={() => setTransitFilters((current) => ({ ...current, showRealtime: !current.showRealtime }))}>Tiempo real</button>
+      </div>}
       <ModeSwitch value={mode} onChange={setMode} />
 
       {compareIds.length > 0 && <button className="compare-fab" onClick={() => setCompareOpen(true)}><span>{compareIds.length}</span> Comparar</button>}
 
       {contextIds.length > 0 && (
         <div className="context-picker" role="dialog" aria-label="Territorios coincidentes">
-          <div><span className="eyebrow">En este punto</span><button className="icon-button" onClick={() => setContextIds([])} aria-label="Cerrar selector de territorios">×</button></div>
+          <div><span><span className="eyebrow">En este punto</span><small>Elige qué elemento quieres consultar</small></span><button className="icon-button" onClick={() => setContextIds([])} aria-label="Cerrar selector de territorios">×</button></div>
           {contextIds.map((id) => { const entity = atlas?.entitiesById.get(id); return entity ? <button key={id} onClick={() => selectEntity(entity)}><strong>{entity.name}</strong><small>{PHYSICAL_KIND_LABELS[entity.kind] || TERRITORY_KIND_LABELS[entity.kind] || entity.kind}</small></button> : null })}
         </div>
       )}

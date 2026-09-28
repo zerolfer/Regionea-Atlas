@@ -4,14 +4,15 @@ import type { FilterSpecification, GeoJSONSource, MapLayerMouseEvent, MapGeoJSON
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { buildStyle, PHYSICAL_INTERACTIVE_LAYERS, POLITICAL_INTERACTIVE_LAYERS, POLITICAL_LEVEL_RANGES, TRANSIT_INTERACTIVE_LAYERS } from './style'
-import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFreshness, UserLocation, ViewState } from '../types'
+import { geometryBounds } from '../data/transit'
+import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
 
 setWorkerUrl(workerUrl)
 const ASTURIAS_CENTER: [number, number] = [-5.86, 43.31]
 
 function viewportPadding(sheetLevel: BottomSheetLevel = 'half') {
-  const mobileBottom = sheetLevel === 'peek' ? 155 : sheetLevel === 'full' ? Math.round(window.innerHeight * 0.65) : Math.round(window.innerHeight * 0.45)
+  const mobileBottom = sheetLevel === 'peek' ? 96 : sheetLevel === 'full' ? Math.round(window.innerHeight * 0.65) : Math.round(window.innerHeight * 0.43)
   const desktopPanel = Math.min(396, (window.innerWidth - 54) / 2) + 36
   return window.innerWidth > 760
     ? { top: 84, right: 36, bottom: 72, left: desktopPanel }
@@ -21,14 +22,19 @@ function viewportPadding(sheetLevel: BottomSheetLevel = 'half') {
 type Props = {
   mode: MapMode
   selected: AtlasEntity | null
+  transitSelection: TransitSelection | null
+  compared: AtlasEntity[]
+  relatedPhysicalIds: string[]
   physicalFilters: Set<PhysicalFilter>
+  transitFilters: TransitFilters
   politicalLevel: PoliticalLevel
   locateRequest: UserLocation | null
   sheetLevel: BottomSheetLevel
   initialView: ViewState
   externalViewRequest: { view: ViewState; token: number } | null
+  focusRequestToken: number
   onEntityClick: (ids: string[]) => void
-  onTransitClick: (type: 'route' | 'stop' | 'vehicle', id: string, name: string, provider: string, freshness: TransitFreshness) => void
+  onTransitClick: (selection: TransitSelection) => void
   onViewportChange: (view: ViewState) => void
   onLocateMatches: (ids: string[]) => void
   onToast: (message: string) => void
@@ -66,6 +72,22 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
       if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', filters.has(filter as PhysicalFilter) ? 'visible' : 'none')
     })
   })
+  if (map.getLayer('physical-river-labels')) map.setLayoutProperty('physical-river-labels', 'visibility', filters.has('hydrography') ? 'visible' : 'none')
+  if (map.getLayer('physical-point-labels')) {
+    const pointKinds = [
+      ...(filters.has('relief') ? ['range'] : []),
+      ...(filters.has('peaks') ? ['peak'] : []),
+      ...(filters.has('coast') ? ['cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island'] : []),
+    ]
+    map.setFilter('physical-point-labels', ['in', ['get', 'kind'], ['literal', pointKinds]] as FilterSpecification)
+  }
+  if (map.getLayer('physical-area-labels')) {
+    const areaKinds = [
+      ...(filters.has('hydrography') ? ['lake', 'reservoir'] : []),
+      ...(filters.has('protected') ? ['protected-area'] : []),
+    ]
+    map.setFilter('physical-area-labels', ['in', ['get', 'kind'], ['literal', areaKinds]] as FilterSpecification)
+  }
 }
 
 function applyPoliticalLevel(map: Map, activeLevel: PoliticalLevel) {
@@ -75,13 +97,31 @@ function applyPoliticalLevel(map: Map, activeLevel: PoliticalLevel) {
       const layer = `${source}-${suffix}`
       if (!map.getLayer(layer)) return
       map.setLayoutProperty(layer, 'visibility', visible ? 'visible' : 'none')
-      const autoHitLayer = activeLevel === 'auto' && suffix === 'hit'
-      map.setLayerZoomRange(layer, activeLevel === source || autoHitLayer ? 0 : min, activeLevel === source || autoHitLayer ? 24 : max)
+      map.setLayerZoomRange(layer, activeLevel === source ? 0 : min, activeLevel === source ? 24 : max)
     })
   })
 }
 
-function applySelection(map: Map, mode: MapMode, selected: AtlasEntity | null) {
+function transitModeExpression() {
+  return ['coalesce', ['get', 'transportMode'], ['case', ['==', ['get', 'provider'], 'RENFE'], 'rail', 'bus']]
+}
+
+function applyTransitFilters(map: Map, filters: TransitFilters) {
+  const providerFilter = ['in', ['get', 'provider'], ['literal', [...filters.providers]]]
+  const modeFilter = ['in', transitModeExpression(), ['literal', [...filters.modes]]]
+  const filter = ['all', providerFilter, modeFilter] as unknown as FilterSpecification
+  ;['transit-routes-line', 'transit-stops-circle', 'transit-stops-labels'].forEach((layer) => {
+    if (map.getLayer(layer)) map.setFilter(layer, filter)
+  })
+  if (map.getLayer('transit-routes-overview')) {
+    map.setFilter('transit-routes-overview', ['all', filter, ['==', transitModeExpression(), 'rail']] as unknown as FilterSpecification)
+  }
+  ;['transit-vehicles-circle', 'transit-selected-vehicle'].forEach((layer) => {
+    if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', filters.showRealtime ? 'visible' : 'none')
+  })
+}
+
+function applySelection(map: Map, mode: MapMode, selected: AtlasEntity | null, transitSelection: TransitSelection | null, relatedPhysicalIds: string[]) {
   const filter: FilterSpecification = ['==', ['get', 'id'], selected?.id || '__none__']
   if (mode === 'political') {
     ;['countries', 'communities', 'provinces', 'comarcas', 'concejos', 'parishes', 'neighborhoods'].forEach((source) => {
@@ -94,7 +134,63 @@ function applySelection(map: Map, mode: MapMode, selected: AtlasEntity | null) {
     ].forEach((layer) => {
       if (map.getLayer(layer)) map.setFilter(layer, filter)
     })
+    if (map.getLayer('physical-related-peaks')) {
+      map.setFilter('physical-related-peaks', ['in', ['get', 'id'], ['literal', relatedPhysicalIds]] as FilterSpecification)
+    }
+  } else if (mode === 'transit') {
+    const transitFilter: FilterSpecification = ['==', ['get', 'id'], transitSelection?.id || '__none__']
+    const layer = transitSelection?.type === 'route' ? 'transit-selected-route' : transitSelection?.type === 'vehicle' ? 'transit-selected-vehicle' : 'transit-selected-stop'
+    ;['transit-selected-route', 'transit-selected-stop', 'transit-selected-vehicle'].forEach((candidate) => {
+      if (map.getLayer(candidate)) map.setFilter(candidate, candidate === layer ? transitFilter : ['==', ['get', 'id'], '__none__'])
+    })
+    const dimmed = Boolean(transitSelection)
+    if (map.getLayer('transit-routes-line')) map.setPaintProperty('transit-routes-line', 'line-opacity', dimmed ? 0.14 : [
+      'interpolate', ['linear'], ['zoom'], 8.5,
+      ['case',
+        ['==', ['coalesce', ['get', 'transportMode'], 'bus'], 'rail'], 0.82,
+        ['==', ['coalesce', ['get', 'scope'], 'regional'], 'local'], 0.16,
+        0.48,
+      ],
+      10.5, 0.86,
+    ])
+    if (map.getLayer('transit-routes-overview')) map.setPaintProperty('transit-routes-overview', 'line-opacity', dimmed ? 0.14 : 0.86)
+    if (map.getLayer('transit-stops-circle')) map.setPaintProperty('transit-stops-circle', 'circle-opacity', dimmed ? 0.22 : 1)
+    if (map.getLayer('transit-stops-labels')) map.setPaintProperty('transit-stops-labels', 'text-opacity', dimmed ? 0.2 : 1)
+    if (map.getLayer('transit-vehicles-circle')) map.setPaintProperty('transit-vehicles-circle', 'circle-opacity', dimmed ? 0.2 : 1)
   }
+}
+
+function applyCompared(map: Map, entities: AtlasEntity[]) {
+  const filter = ['in', ['get', 'id'], ['literal', entities.map(({ id }) => id)]] as FilterSpecification
+  ;['countries', 'communities', 'provinces', 'comarcas', 'concejos', 'parishes', 'neighborhoods'].forEach((source) => {
+    if (map.getLayer(`${source}-compared`)) map.setFilter(`${source}-compared`, filter)
+  })
+}
+
+function fitBounds(map: Map, bounds: [number, number, number, number], maxZoom = 13) {
+  if (Math.abs(bounds[2] - bounds[0]) < 1e-7 && Math.abs(bounds[3] - bounds[1]) < 1e-7) {
+    map.easeTo({ center: [bounds[0], bounds[1]], zoom: Math.max(map.getZoom(), maxZoom), duration: 700 })
+    return
+  }
+  map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], {
+    padding: 24, maxZoom, duration: 700,
+  })
+}
+
+function unionBounds(entities: AtlasEntity[]) {
+  const bounds = entities.map(({ bbox }) => bbox).filter((value): value is [number, number, number, number] => Boolean(value))
+  if (!bounds.length) return null
+  return [
+    Math.min(...bounds.map((item) => item[0])), Math.min(...bounds.map((item) => item[1])),
+    Math.max(...bounds.map((item) => item[2])), Math.max(...bounds.map((item) => item[3])),
+  ] as [number, number, number, number]
+}
+
+function focusCurrentSelection(map: Map, current: Props) {
+  if (current.selected?.bbox) fitBounds(map, current.selected.bbox)
+  else if (current.selected?.center) map.easeTo({ center: current.selected.center, zoom: Math.max(map.getZoom(), 10), duration: 700 })
+  else if (current.transitSelection?.bbox) fitBounds(map, current.transitSelection.bbox, current.transitSelection.type === 'stop' ? 15 : 13)
+  else if (current.transitSelection?.center) map.easeTo({ center: current.transitSelection.center, zoom: Math.max(map.getZoom(), 12), duration: 700 })
 }
 
 function applyUserLocation(map: Map, location: UserLocation | null) {
@@ -113,9 +209,9 @@ function applyUserLocation(map: Map, location: UserLocation | null) {
 export default function MapView(props: Props) {
   const mapRef = useRef<Map | null>(null)
   const propsRef = useRef(props)
-  const selectedIdRef = useRef<string | null>(null)
   const styleModeRef = useRef(props.mode)
   propsRef.current = props
+  const comparedKey = props.compared.map(({ id }) => id).join(',')
 
   useEffect(() => {
     const map = new Map({
@@ -129,7 +225,11 @@ export default function MapView(props: Props) {
     map.addControl(new NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
     map.addControl(new AttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-right')
 
+    let clickTimer: number | undefined
     const handleClick = (event: MapLayerMouseEvent) => {
+      if (event.originalEvent.detail > 1) return
+      window.clearTimeout(clickTimer)
+      clickTimer = window.setTimeout(() => {
       const current = propsRef.current
       const layers = existingLayers(map, interactiveLayers(current.mode))
       const features = uniqueFeatures(map.queryRenderedFeatures(event.point, { layers }))
@@ -138,13 +238,23 @@ export default function MapView(props: Props) {
         const feature = features[0]
         const type = String(feature.properties?.entityType || 'stop') as 'route' | 'stop' | 'vehicle'
         const freshness = String(feature.properties?.freshness || 'scheduled') as TransitFreshness
-        current.onTransitClick(type, String(feature.properties?.id), String(feature.properties?.name), String(feature.properties?.provider || ''), freshness)
+        const bounds = geometryBounds(feature.geometry)
+        const transportMode = String(feature.properties?.transportMode || (feature.properties?.provider === 'RENFE' ? 'rail' : 'bus')) as TransitMode
+        current.onTransitClick({
+          type, id: String(feature.properties?.id), name: String(feature.properties?.name),
+          provider: String(feature.properties?.provider || ''), freshness, transportMode,
+          scope: feature.properties?.scope, bbox: bounds,
+          center: bounds ? [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2] : null,
+        })
       } else {
         current.onEntityClick(features.map((feature) => String(feature.properties?.id)))
       }
+      }, 220)
     }
+    const handleDoubleClick = () => window.clearTimeout(clickTimer)
 
     map.on('click', handleClick)
+    map.on('dblclick', handleDoubleClick)
     map.on('mousemove', (event) => {
       const layers = existingLayers(map, interactiveLayers(propsRef.current.mode))
       map.getCanvas().style.cursor = map.queryRenderedFeatures(event.point, { layers }).length ? 'pointer' : ''
@@ -158,10 +268,13 @@ export default function MapView(props: Props) {
     map.once('load', () => {
       applyPhysicalFilters(map, propsRef.current.physicalFilters)
       applyPoliticalLevel(map, propsRef.current.politicalLevel)
-      applySelection(map, propsRef.current.mode, propsRef.current.selected)
+      applyTransitFilters(map, propsRef.current.transitFilters)
+      applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
+      applyCompared(map, propsRef.current.compared)
       applyUserLocation(map, propsRef.current.locateRequest)
+      if (propsRef.current.focusRequestToken) focusCurrentSelection(map, propsRef.current)
     })
-    return () => { window.removeEventListener('resize', handleResize); mapRef.current = null; map.remove() }
+    return () => { window.clearTimeout(clickTimer); window.removeEventListener('resize', handleResize); mapRef.current = null; map.remove() }
   }, [])
 
   useEffect(() => {
@@ -173,8 +286,11 @@ export default function MapView(props: Props) {
     map.once('style.load', () => {
       applyPhysicalFilters(map, propsRef.current.physicalFilters)
       applyPoliticalLevel(map, propsRef.current.politicalLevel)
-      applySelection(map, propsRef.current.mode, propsRef.current.selected)
+      applyTransitFilters(map, propsRef.current.transitFilters)
+      applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
+      applyCompared(map, propsRef.current.compared)
       applyUserLocation(map, propsRef.current.locateRequest)
+      if (propsRef.current.focusRequestToken) focusCurrentSelection(map, propsRef.current)
     })
   }, [props.mode])
 
@@ -182,6 +298,11 @@ export default function MapView(props: Props) {
     const map = mapRef.current
     if (map?.isStyleLoaded()) applyPhysicalFilters(map, props.physicalFilters)
   }, [props.physicalFilters])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (map?.isStyleLoaded() && props.mode === 'transit') applyTransitFilters(map, props.transitFilters)
+  }, [props.transitFilters, props.mode])
 
   useEffect(() => {
     const map = mapRef.current
@@ -245,18 +366,30 @@ export default function MapView(props: Props) {
   useEffect(() => {
     const map = mapRef.current
     if (!map?.isStyleLoaded()) return
-    applySelection(map, props.mode, props.selected)
-    if (props.selected && props.selected.id !== selectedIdRef.current) {
-      selectedIdRef.current = props.selected.id
+    applySelection(map, props.mode, props.selected, props.transitSelection, props.relatedPhysicalIds)
+    if (props.selected) {
       if (props.selected.bbox) {
-        map.fitBounds([[props.selected.bbox[0], props.selected.bbox[1]], [props.selected.bbox[2], props.selected.bbox[3]]], {
-          padding: viewportPadding(props.sheetLevel), maxZoom: 12, duration: 700,
-        })
+        fitBounds(map, props.selected.bbox)
       } else if (props.selected.center) {
         map.easeTo({ center: props.selected.center, zoom: Math.max(map.getZoom(), 10), duration: 700 })
       }
+    } else if (props.transitSelection?.bbox) {
+      fitBounds(map, props.transitSelection.bbox, props.transitSelection.type === 'stop' ? 15 : 13)
+    } else if (props.transitSelection?.center) {
+      map.easeTo({ center: props.transitSelection.center, zoom: Math.max(map.getZoom(), 12), duration: 700 })
     }
-  }, [props.selected, props.mode, props.sheetLevel])
+  }, [props.selected, props.transitSelection, props.relatedPhysicalIds, props.mode, props.sheetLevel, props.focusRequestToken])
+
+  useEffect(() => {
+    const map = mapRef.current
+    const bounds = unionBounds(props.compared)
+    if (!map?.isStyleLoaded()) return
+    applyCompared(map, props.compared)
+    if (bounds && props.compared.length > 1) {
+      map.stop()
+      fitBounds(map, bounds, 12)
+    }
+  }, [comparedKey, props.compared, props.sheetLevel])
 
   useEffect(() => {
     const map = mapRef.current
@@ -264,13 +397,14 @@ export default function MapView(props: Props) {
     if (!map || !request) return
     if (map.isStyleLoaded()) applyUserLocation(map, request)
     map.easeTo({ center: request.coordinates, zoom: 11, duration: 850 })
+    if (props.mode !== 'political') return
     map.once('idle', () => {
       const point = map.project(request.coordinates)
       const layers = existingLayers(map, POLITICAL_INTERACTIVE_LAYERS)
       const ids = uniqueFeatures(map.queryRenderedFeatures(point, { layers })).map((feature) => String(feature.properties?.id))
       propsRef.current.onLocateMatches(ids)
     })
-  }, [props.locateRequest])
+  }, [props.locateRequest, props.mode])
 
   return <div id="map" aria-label="Mapa interactivo de Regionea Atlas" />
 }

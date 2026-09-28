@@ -1,0 +1,97 @@
+import { createHash } from 'node:crypto'
+import { readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+
+const ROOT = process.cwd()
+const ATLAS = path.join(ROOT, 'public', 'data', 'atlas')
+
+function cleanName(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim()
+}
+
+function normalize(value) {
+  return cleanName(value).normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('es')
+}
+
+function usefulRangeName(value) {
+  const name = cleanName(value)
+  const tokens = name.split(' ').filter(Boolean)
+  const generic = new Set(['sierra', 'cordal', 'cordillera', 'monte', 'montes', 'pico', 'pena', 'peña', 'alto', 'collada', 'de', 'del', 'la', 'las', 'el', 'los'])
+  if (name.length < 3 || generic.has(normalize(name))) return false
+  if (tokens.length >= 2 && tokens.filter((token) => token.length === 1).length / tokens.length > 0.4) return false
+  return !/^(sierra|cordal|cordillera|monte|montes|pena|alto)( de| del| la| las| el| los)?$/i.test(normalize(name))
+}
+
+function bounds(features) {
+  const boxes = features.map((feature) => feature.properties.bbox).filter(Boolean)
+  return [
+    Math.min(...boxes.map((box) => box[0])), Math.min(...boxes.map((box) => box[1])),
+    Math.max(...boxes.map((box) => box[2])), Math.max(...boxes.map((box) => box[3])),
+  ]
+}
+
+async function read(relativePath) {
+  return JSON.parse(await readFile(path.join(ATLAS, relativePath), 'utf8'))
+}
+
+async function write(relativePath, value) {
+  const body = `${JSON.stringify(value)}\n`
+  await writeFile(path.join(ATLAS, relativePath), body, 'utf8')
+  return { bytes: Buffer.byteLength(body), sha256: createHash('sha256').update(body).digest('hex') }
+}
+
+function labelCollection(features, include) {
+  const seen = new Set()
+  return {
+    type: 'FeatureCollection',
+    features: features.filter(include).filter((feature) => {
+      const key = `${feature.properties.kind}:${normalize(feature.properties.name)}`
+      if (!feature.properties.center || seen.has(key)) return false
+      seen.add(key)
+      return true
+    }).map((feature) => ({
+      type: 'Feature', id: feature.id, properties: feature.properties,
+      geometry: { type: 'Point', coordinates: feature.properties.center },
+    })),
+  }
+}
+
+const [asturias, europe, catalog, manifest] = await Promise.all([
+  read('physical/asturias.geojson'), read('physical/europe.geojson'), read('catalog.json'), read('manifest.json'),
+])
+
+const seenRanges = new Set()
+asturias.features = asturias.features.filter((feature) => {
+  feature.properties.name = cleanName(feature.properties.name)
+  feature.properties.localName = cleanName(feature.properties.localName || feature.properties.name)
+  if (feature.properties.kind !== 'range') return true
+  const key = normalize(feature.properties.name)
+  if (!usefulRangeName(feature.properties.name) || seenRanges.has(key)) return false
+  seenRanges.add(key)
+  return true
+})
+
+const asturiasLabels = labelCollection(asturias.features, (feature) => feature.properties.kind !== 'river')
+const europeLabels = labelCollection(europe.features, () => true)
+catalog.physical = [...europe.features, ...asturias.features].map((feature) => ({ ...feature.properties }))
+
+const asturiasFile = await write('physical/asturias.geojson', asturias)
+const asturiasLabelsFile = await write('physical/labels-asturias.geojson', asturiasLabels)
+const europeLabelsFile = await write('physical/labels-europe.geojson', europeLabels)
+const catalogFile = await write('catalog.json', catalog)
+
+Object.assign(manifest.collections.physicalAsturias, asturiasFile, { count: asturias.features.length, bounds: bounds(asturias.features) })
+Object.assign(manifest.collections.catalog, catalogFile, { count: catalog.territories.length + catalog.physical.length })
+manifest.collections.physicalAsturiasLabels = {
+  url: '/data/atlas/physical/labels-asturias.geojson', ...asturiasLabelsFile, count: asturiasLabels.features.length,
+  sourceIds: ['sitpa-physical'], license: 'CC BY 4.0', bounds: bounds(asturiasLabels.features), minZoom: 7.5, maxZoom: 24,
+}
+manifest.collections.physicalEuropeLabels = {
+  url: '/data/atlas/physical/labels-europe.geojson', ...europeLabelsFile, count: europeLabels.features.length,
+  sourceIds: ['natural-earth'], license: 'Public domain', bounds: bounds(europeLabels.features), minZoom: 2, maxZoom: 9,
+}
+manifest.version = new Date().toISOString().slice(0, 10)
+manifest.generatedAt = new Date().toISOString()
+await write('manifest.json', manifest)
+
+process.stdout.write(`Atlas físico refinado: ${asturias.features.length} accidentes y ${asturiasLabels.features.length + europeLabels.features.length} etiquetas únicas.\n`)

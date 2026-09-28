@@ -72,6 +72,13 @@ export const PHYSICAL_KIND_LABELS: Record<string, string> = {
   reservoir: 'Embalse',
   valley: 'Valle',
   coast: 'Accidente costero',
+  cape: 'Cabo',
+  bay: 'Bahía',
+  gulf: 'Golfo',
+  estuary: 'Ría o estuario',
+  cliff: 'Acantilado',
+  beach: 'Playa',
+  island: 'Isla',
   'protected-area': 'Espacio protegido',
 }
 

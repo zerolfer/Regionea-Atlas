@@ -91,6 +91,27 @@ function routeColor(route, provider) {
   return /^[0-9a-f]{6}$/i.test(color) ? `#${color}` : PROVIDER_COLORS[provider] || '#326b89'
 }
 
+function transportMode(route, provider) {
+  const routeType = Number(route.route_type)
+  if (routeType === 4 || (routeType >= 1000 && routeType < 1100)) return 'ferry'
+  if (routeType >= 1100 && routeType < 1200) return 'air'
+  if ([0, 1, 2, 5, 6, 7, 11, 12].includes(routeType) || provider === 'renfe') return 'rail'
+  return 'bus'
+}
+
+function routeScope(coordinates) {
+  if (!coordinates.length) return 'regional'
+  const longitudes = coordinates.map(([longitude]) => longitude)
+  const latitudes = coordinates.map(([, latitude]) => latitude)
+  const bounds = [Math.min(...longitudes), Math.min(...latitudes), Math.max(...longitudes), Math.max(...latitudes)]
+  const outsideAsturias = bounds[0] < ASTURIAS_BOUNDS[0] || bounds[2] > ASTURIAS_BOUNDS[2] || bounds[1] < ASTURIAS_BOUNDS[1] || bounds[3] > ASTURIAS_BOUNDS[3]
+  if (outsideAsturias) return 'external'
+  const middleLatitude = (bounds[1] + bounds[3]) / 2
+  const widthKm = (bounds[2] - bounds[0]) * 111 * Math.cos(middleLatitude * Math.PI / 180)
+  const heightKm = (bounds[3] - bounds[1]) * 111
+  return Math.hypot(widthKm, heightKm) <= 24 ? 'local' : 'regional'
+}
+
 function cleanText(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
 }
@@ -204,6 +225,7 @@ function normalizeFeed({ provider, file }) {
     properties: {
       id: `${provider}:${stop.stop_id}`, entityType: 'stop', provider: provider.toUpperCase(), freshness: schedule.status,
       name: cleanText(stop.stop_name) || stop.stop_id, color: PROVIDER_COLORS[provider] || '#326b89',
+      transportMode: provider === 'renfe' ? 'rail' : 'bus', scope: 'local',
     },
     geometry: { type: 'Point', coordinates: [Number(stop.stop_lon), Number(stop.stop_lat)] },
   }))
@@ -260,6 +282,7 @@ function normalizeFeed({ provider, file }) {
         id: `${provider}:${trip.route_id}`, entityType: 'route', provider: provider.toUpperCase(), freshness: schedule.status,
         name: cleanText(route.route_long_name) || cleanText(route.route_short_name) || cleanText(trip.trip_headsign) || trip.route_id,
         shortName: cleanText(route.route_short_name), color: routeColor(route, provider),
+        routeType: Number(route.route_type), transportMode: transportMode(route, provider), scope: routeScope(fullCoordinates),
       },
       geometry: { type: 'LineString', coordinates },
     })

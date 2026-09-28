@@ -68,7 +68,7 @@ for (const [name, collection] of Object.entries(manifest.collections)) {
     const geojson = JSON.parse(buffer.toString('utf8'))
     assert(geojson.type === 'FeatureCollection', `${name}: no es FeatureCollection`)
     assert(geojson.features.length === collection.count, `${name}: recuento incorrecto`)
-    const collectionIds = name === 'territoryLabels' ? new Set() : ids
+    const collectionIds = name === 'territoryLabels' || name.endsWith('Labels') ? new Set() : ids
     geojson.features.forEach((feature) => validateFeature(feature, collectionIds, sourceIds, name))
   }
 }

@@ -525,7 +525,9 @@ async function main() {
     ...peaksRaw.features.map((feature) => physicalFeature(feature, 'peak', feature.properties.text, {
       elevationM: roundMetric(feature.properties.elevation),
     }, 0, 'names-030422')),
-    ...rangesRaw.features.map((feature) => physicalFeature(feature, 'range', feature.properties.text, {}, 0, 'names-030424')),
+    ...uniqueByName(rangesRaw.features
+      .filter((feature) => usefulGeographicName(feature.properties.text))
+      .map((feature) => physicalFeature(feature, 'range', feature.properties.text, {}, 0, 'names-030424'))),
     ...riversRaw.features.map((feature) => physicalFeature(feature, 'river', feature.properties.nombre, {
       lengthKm: roundMetric(feature.properties['st_length(shape)'] / 1000),
     }, 0.00012, 'hydro-4')),
@@ -689,8 +691,30 @@ function isResidualParishName(name) {
 
 function titleCase(value) {
   return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
     .toLocaleLowerCase('es')
     .replace(/(^|[\s/-])\p{L}/gu, (letter) => letter.toLocaleUpperCase('es'))
+}
+
+function usefulGeographicName(value) {
+  const name = titleCase(value)
+  const tokens = name.split(' ').filter(Boolean)
+  const normalized = name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('es')
+  const generic = new Set(['sierra', 'cordal', 'cordillera', 'monte', 'montes', 'pico', 'pena', 'alto', 'collada', 'de', 'del', 'la', 'las', 'el', 'los'])
+  if (name.length < 3 || generic.has(normalized)) return false
+  if (tokens.length >= 2 && tokens.filter((token) => token.length === 1).length / tokens.length > 0.4) return false
+  return !/^(sierra|cordal|cordillera|monte|montes|pena|alto)( de| del| la| las| el| los)?$/i.test(normalized)
+}
+
+function uniqueByName(features) {
+  const seen = new Set()
+  return features.filter((feature) => {
+    const key = slugify(feature.properties.name)
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function roundMetric(value) {

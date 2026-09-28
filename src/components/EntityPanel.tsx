@@ -8,6 +8,7 @@ type Props = {
   datasetDate?: string
   parent?: AtlasEntity
   ancestors: AtlasEntity[]
+  related?: AtlasEntity[]
   compared: boolean
   onCompare: () => void
   onNavigate: (entity: AtlasEntity) => void
@@ -24,7 +25,7 @@ function formatDatasetDate(value?: string) {
   return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' }).format(date)
 }
 
-export default function EntityPanel({ entity, editorial, source, datasetDate, parent, ancestors, compared, onCompare, onNavigate, onClose }: Props) {
+export default function EntityPanel({ entity, editorial, source, datasetDate, parent, ancestors, related = [], compared, onCompare, onNavigate, onClose }: Props) {
   const label = PHYSICAL_KIND_LABELS[entity.kind] || TERRITORY_KIND_LABELS[entity.kind] || entity.kind
   const isTerritory = Boolean(TERRITORY_KIND_LABELS[entity.kind])
   const hasMetrics = entity.population != null || entity.areaKm2 != null || entity.density != null || entity.elevationM != null || entity.lengthKm != null
@@ -58,6 +59,13 @@ export default function EntityPanel({ entity, editorial, source, datasetDate, pa
           {section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
         </section>
       ))}
+      {related.length > 0 && (
+        <section className="related-features">
+          <h2>Picos destacados en el entorno</h2>
+          <p>Se muestran los picos de mayor altitud próximos al topónimo de esta sierra.</p>
+          <div>{related.map((item) => <button key={item.id} onClick={() => onNavigate(item)}><span>{item.name}</span>{item.elevationM != null && <small>{formatNumber(item.elevationM)} m</small>}</button>)}</div>
+        </section>
+      )}
       {isTerritory && (
         <button className={compared ? 'secondary-button selected' : 'secondary-button'} onClick={onCompare}>
           {compared ? 'Quitar de la comparación' : 'Añadir a comparar'}

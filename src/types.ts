@@ -23,6 +23,13 @@ export type PhysicalFeatureKind =
   | 'reservoir'
   | 'valley'
   | 'coast'
+  | 'cape'
+  | 'bay'
+  | 'gulf'
+  | 'estuary'
+  | 'cliff'
+  | 'beach'
+  | 'island'
   | 'protected-area'
 
 export type MetricValue = {
@@ -96,13 +103,40 @@ export type EditorialEntry = {
 
 export type PhysicalFilter = 'relief' | 'peaks' | 'hydrography' | 'valleys' | 'coast' | 'protected'
 export type TransitFreshness = 'live' | 'scheduled' | 'stale' | 'demo'
+export type TransitMode = 'bus' | 'rail' | 'ferry' | 'air'
+export type TransitScope = 'local' | 'regional' | 'external'
+
+export type TransitSelection = {
+  type: 'route' | 'stop' | 'vehicle'
+  id: string
+  name: string
+  provider: string
+  freshness: TransitFreshness
+  transportMode?: TransitMode
+  scope?: TransitScope
+  bbox?: [number, number, number, number] | null
+  center?: [number, number] | null
+}
+
+export type TransitFilters = {
+  providers: Set<string>
+  modes: Set<TransitMode>
+  showRealtime: boolean
+}
+
+export type SearchItem = {
+  id: string
+  name: string
+  aliases: string[]
+  kindLabel: string
+  atlasEntity?: AtlasEntity
+  transitSelection?: TransitSelection
+}
 
 export type MapSelection =
   | { type: 'territory'; entity: AtlasEntity }
   | { type: 'physical'; entity: AtlasEntity }
-  | { type: 'route'; id: string; name: string; provider: string; freshness: TransitFreshness }
-  | { type: 'stop'; id: string; name: string; provider: string; freshness: TransitFreshness }
-  | { type: 'vehicle'; id: string; name: string; provider: string; freshness: TransitFreshness }
+  | TransitSelection
 
 export type ViewState = {
   center: [number, number]
