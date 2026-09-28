@@ -6,6 +6,7 @@ import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
 import SearchBox from './components/SearchBox'
 import Toast from './components/Toast'
+import { bottomSheetHeight, nearestBottomSheetLevel } from './bottom-sheet'
 import { isPhysicalEntity, loadAtlasData, PHYSICAL_KIND_LABELS, TERRITORY_KIND_LABELS } from './data/atlas'
 import type { AtlasData } from './data/atlas'
 import { loadTransitCatalog } from './data/transit'
@@ -23,8 +24,6 @@ const POLITICAL_LEVEL_LABELS: Record<PoliticalLevel, string> = {
   comarcas: 'Comarcas', concejos: 'Concejos', parishes: 'Parroquias', neighborhoods: 'Barrios',
 }
 const TRANSIT_MODE_LABELS: Record<TransitMode, string> = { bus: 'Autobús', rail: 'Tren', ferry: 'Barco', air: 'Avión' }
-const SHEET_LEVELS: BottomSheetLevel[] = ['peek', 'half', 'full']
-
 const TRANSIT_STATUS_COPY: Record<TransitFreshness, { title: string; text: string }> = {
   demo: { title: 'Datos de demostración', text: 'Se sustituirán automáticamente al importar los GTFS del NAP.' },
   scheduled: { title: 'Horario programado', text: 'Información procedente del último GTFS estático válido.' },
@@ -81,7 +80,7 @@ export default function App() {
   })
   const [focusRequestToken, setFocusRequestToken] = useState(0)
   const [sheetDragHeight, setSheetDragHeight] = useState<number | null>(null)
-  const sheetDrag = useRef<{ pointerId: number; startY: number; startHeight: number; moved: boolean } | null>(null)
+  const sheetDrag = useRef<{ pointerId: number; startY: number; startHeight: number; currentHeight: number; moved: boolean } | null>(null)
   const suppressSheetClick = useRef(false)
   const [departures, setDepartures] = useState<Array<{
     route: string
@@ -247,10 +246,6 @@ export default function App() {
     return () => { active = false; window.clearInterval(interval) }
   }, [transitSelection])
 
-  useEffect(() => {
-    if (selected || transitSelection || compareOpen) setSheetLevel((current) => current === 'peek' ? 'half' : current)
-  }, [selected, transitSelection, compareOpen])
-
   function selectEntity(entity: AtlasEntity, focus = true) {
     setCompareOpen(false)
     setTransitSelection(null)
@@ -316,15 +311,21 @@ export default function App() {
   }
 
   function sheetHeight(level: BottomSheetLevel) {
-    const ratio = level === 'peek' ? 0.18 : level === 'half' ? 0.48 : 0.88
-    return Math.round(window.innerHeight * ratio)
+    return bottomSheetHeight(level, window.visualViewport?.height ?? window.innerHeight)
   }
 
   function startSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
     if (window.innerWidth > 760) return
+    const measuredHeight = event.currentTarget.parentElement?.getBoundingClientRect().height ?? sheetHeight(sheetLevel)
     event.currentTarget.setPointerCapture(event.pointerId)
-    sheetDrag.current = { pointerId: event.pointerId, startY: event.clientY, startHeight: sheetHeight(sheetLevel), moved: false }
-    setSheetDragHeight(sheetHeight(sheetLevel))
+    sheetDrag.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: measuredHeight,
+      currentHeight: measuredHeight,
+      moved: false,
+    }
+    setSheetDragHeight(measuredHeight)
   }
 
   function moveSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
@@ -332,14 +333,14 @@ export default function App() {
     if (!drag || drag.pointerId !== event.pointerId) return
     const nextHeight = Math.max(sheetHeight('peek'), Math.min(sheetHeight('full'), drag.startHeight + drag.startY - event.clientY))
     if (Math.abs(event.clientY - drag.startY) > 5) drag.moved = true
+    drag.currentHeight = nextHeight
     setSheetDragHeight(nextHeight)
   }
 
   function endSheetDrag(event: ReactPointerEvent<HTMLButtonElement>) {
     const drag = sheetDrag.current
     if (!drag || drag.pointerId !== event.pointerId) return
-    const currentHeight = sheetDragHeight ?? drag.startHeight
-    const nearest = SHEET_LEVELS.reduce((best, level) => Math.abs(sheetHeight(level) - currentHeight) < Math.abs(sheetHeight(best) - currentHeight) ? level : best, 'half')
+    const nearest = nearestBottomSheetLevel(drag.currentHeight, window.visualViewport?.height ?? window.innerHeight)
     sheetDrag.current = null
     setSheetDragHeight(null)
     if (drag.moved) {

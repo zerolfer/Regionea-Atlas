@@ -12,7 +12,7 @@ setWorkerUrl(workerUrl)
 const ASTURIAS_CENTER: [number, number] = [-5.86, 43.31]
 
 function viewportPadding(sheetLevel: BottomSheetLevel = 'half') {
-  const mobileBottom = sheetLevel === 'peek' ? 155 : sheetLevel === 'full' ? Math.round(window.innerHeight * 0.65) : Math.round(window.innerHeight * 0.45)
+  const mobileBottom = sheetLevel === 'peek' ? 96 : sheetLevel === 'full' ? Math.round(window.innerHeight * 0.65) : Math.round(window.innerHeight * 0.43)
   const desktopPanel = Math.min(396, (window.innerWidth - 54) / 2) + 36
   return window.innerWidth > 760
     ? { top: 84, right: 36, bottom: 72, left: desktopPanel }
