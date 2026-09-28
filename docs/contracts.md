@@ -91,7 +91,7 @@ En el snapshot actual las parroquias y barrios son `statistical`; los países de
 
 Tipos reconocidos: `peak`, `range`, `river`, `lake`, `reservoir`, `valley`, `coast`, `cape`, `bay`, `gulf`, `estuary`, `cliff`, `beach`, `island` y `protected-area`.
 
-No todos están poblados por el pipeline actual. Añadir un tipo al contrato no autoriza a deducirlo de rótulos incompletos. `territoryIds` relaciona el accidente con territorios cuando la importación dispone de esa relación; actualmente el detalle asturiano usa `['es-as']` de forma general.
+El snapshot asturiano puebla picos, sierras, ríos, lagos, embalses, espacios protegidos, cabos, bahías, rías, islas y playas. `gulf`, `cliff` y `valley` siguen preparados, pero solo se publican cuando una fuente los identifica de forma verificable. Añadir un tipo al contrato no autoriza a deducirlo de rótulos incompletos. `territoryIds` relaciona el accidente con territorios cuando la importación dispone de esa relación; actualmente el detalle asturiano usa `['es-as']` de forma general.
 
 ## Manifiesto principal
 
@@ -247,6 +247,8 @@ Paths: `/mapa/politico`, `/mapa/fisico`, `/mapa/transporte`.
 
 La selección de transporte no se restaura actualmente desde `seleccion`: el parser solo resuelve ese parámetro contra `entitiesById`. Es una limitación conocida.
 
+Los valores físicos reconocidos son `relief`, `peaks`, `hydrography`, `valleys`, `coast`, `protected`, `hypsometry` y `terrain3d`. Los seis primeros forman el estado predeterminado; hipsometría y 3D requieren activación explícita.
+
 ## Evolución de contratos
 
 Un cambio incompatible debe incluir:
@@ -258,4 +260,3 @@ Un cambio incompatible debe incluir:
 5. pruebas y actualización de este documento.
 
 No introduzca recálculos de respaldo en el navegador: ocultan snapshots incompletos y duplican lógica.
-

@@ -11,7 +11,7 @@ npm run data:validate   # valida snapshot sin descargar
 npm run data:import-gtfs -- --feed proveedor=/ruta/feed.zip
 ```
 
-`data:sync` requiere red y puede tardar. Descarga fuentes, reproyectadas ya por sus endpoints a WGS84 cuando procede, normaliza, simplifica, calcula cajas/superficies, escribe GeoJSON y catálogo, refina etiquetas físicas, compila contenido, prepara transporte y valida.
+`data:sync` requiere red y puede tardar. Descarga fuentes, reproyectadas ya por sus endpoints a WGS84 cuando procede, normaliza, simplifica, calcula cajas/superficies, escribe GeoJSON y catálogo, incorpora costa y playas oficiales mediante `sync-physical-coast.mjs`, refina etiquetas físicas, compila contenido, prepara transporte y valida.
 
 El pipeline escribe el manifiesto principal al final, pero no usa un directorio temporal para el snapshot completo. Ejecútelo en una rama limpia, revise el diff y no despliegue una ejecución interrumpida.
 
@@ -31,7 +31,7 @@ El manifiesto desplegado es la autoridad de atribución. El adaptador actual dec
 | `sitpa-functional-regions` | comarcas funcionales | CC BY 4.0 |
 | `sitpa-physical` | relieve, hidrografía y espacios protegidos | CC BY 4.0 |
 
-El fondo tiene atribución independiente a OpenFreeMap, OpenMapTiles y OpenStreetMap; el sombreado, a Esri y sus proveedores. Los GTFS se rigen por la licencia de cada publicación NAP. No copie la licencia de una colección a otra sin verificarla.
+El fondo tiene atribución independiente a OpenFreeMap, OpenMapTiles y OpenStreetMap; la elevación Terrarium, a Mapzen y AWS Open Data. Los GTFS se rigen por la licencia de cada publicación NAP. No copie la licencia de una colección a otra sin verificarla.
 
 ## Añadir una cobertura territorial
 
@@ -95,6 +95,8 @@ Después actualice las reglas específicas del validador, que hoy enumeran los c
 5. Añada `territoryIds` cuando la relación pueda calcularse de forma reproducible.
 6. Añada capa visual, capa de selección y capa a `PHYSICAL_INTERACTIVE_LAYERS`.
 7. Genere etiquetas derivadas con una política de deduplicación explícita.
+
+Para costa asturiana, `sync-physical-coast.mjs` clasifica códigos oficiales de Nombres Geográficos y añade la capa de playas de Turismo. La clasificación parte del código de capa y solo usa el nombre para separar cabo, bahía y golfo dentro del grupo que la propia fuente declara conjuntamente.
 
 Los rótulos SITPA pueden estar fragmentados en varios registros. No una palabras por proximidad sin una regla verificable: es preferible omitir un nombre a inventar un accidente.
 

@@ -26,7 +26,7 @@ navegador ──> React/App ──> catálogo + GeoJSON ──> MapLibre
 cron Vercel ──> descarga ZIP GTFS privado a Blob
 ```
 
-El cliente no consulta directamente las fuentes administrativas ni usa claves. Consume el snapshot versionado en `public/data/atlas`. MapLibre solicita además teselas y fuentes tipográficas a OpenFreeMap y sombreado de relieve a Esri.
+El cliente no consulta directamente las fuentes administrativas ni usa claves. Consume el snapshot versionado en `public/data/atlas`. MapLibre solicita además teselas y fuentes tipográficas a OpenFreeMap y elevación Terrarium de Mapzen en AWS Open Data.
 
 ## Frontend
 
@@ -57,7 +57,9 @@ Las relaciones de ascendencia se recorren con `parentId`. El comparador admite h
 
 ### Físico
 
-Hay una colección de contexto europeo y una de detalle asturiano, además de colecciones derivadas de etiquetas. Los filtros disponibles son relieve, picos, hidrografía, valles, costa y espacios protegidos.
+Hay una colección de contexto europeo y una de detalle asturiano, además de colecciones derivadas de etiquetas. Los filtros de contenido son relieve, picos, hidrografía, valles, costa y espacios protegidos. La hipsometría y el terreno 3D son visualizaciones opcionales, desactivadas por defecto y persistidas en la URL. Sombreado, hipsometría y terreno usan instancias DEM separadas para evitar degradar el renderizado.
+
+`scripts/sync-physical-coast.mjs` enriquece el detalle con rías, islas, cabos, bahías y playas oficiales de SITPA. Los símbolos costeros aparecen progresivamente para no saturar escalas regionales.
 
 La relación entre una sierra seleccionada y sus picos se calcula actualmente en el cliente por proximidad al centro, no mediante una relación persistida. Es una heurística de interfaz y no un vínculo de datos normativo.
 
@@ -77,7 +79,7 @@ Las cachés en memoria de una función serverless son oportunistas: una nueva in
 
 ## PWA y red
 
-`vite-plugin-pwa` genera el manifiesto y un service worker `autoUpdate`. Workbox precachea HTML, JavaScript, CSS, iconos, SVG y fuentes incluidas en `dist`; no precachea JSON, GeoJSON, teselas ni respuestas API. La aplicación es online-first para datos cartográficos.
+`vite-plugin-pwa` genera el manifiesto y un service worker `autoUpdate`. Workbox precachea HTML, JavaScript, CSS, iconos, SVG y fuentes incluidas en `dist`; no precachea JSON, GeoJSON, teselas ni respuestas API. La aplicación es online-first para datos cartográficos. El cliente ofrece la instalación nativa cuando recibe `beforeinstallprompt`; en Safari de iOS muestra el flujo manual «Compartir → Añadir a pantalla de inicio». Un descarte se recuerda durante 30 días.
 
 Las rutas `/mapa/*` se reescriben a `/index.html` en Vercel. El service worker usa el mismo fallback para navegación.
 
@@ -109,9 +111,8 @@ vercel.json                   build, rewrites y cron
 ## Dependencias externas en tiempo de ejecución
 
 - OpenFreeMap/OpenMapTiles: fondo vectorial y glifos.
-- Esri World Hillshade: sombreado del modo físico.
+- Mapzen Terrain Tiles en AWS Open Data: sombreado, hipsometría y relieve 3D.
 - Renfe GTFS-Realtime: tres feeds protobuf, salvo URL alternativa configurada.
 - Vercel Analytics: componente cargado por el frontend.
 
 Una caída de estos servicios no invalida el snapshot territorial, pero puede dejar el fondo, el sombreado o el tiempo real incompletos.
-

@@ -92,7 +92,7 @@ Vercel ejecuta `data:publish` antes de compilar. Por ello un build puede cambiar
 
 ## Caché y recuperación
 
-- PWA: solo armazón estático precacheado; GeoJSON y teselas no garantizados offline.
+- PWA: solo armazón estático precacheado; GeoJSON y teselas no garantizados offline. La promoción de instalación usa el evento nativo en Chromium y ayuda manual en Safari de iOS.
 - Realtime: caché de proceso 15 s y CDN 15 s/45 s stale-while-revalidate.
 - Salidas: CDN 60 s/300 s stale-while-revalidate.
 - Fallo realtime: último objeto correcto de la instancia pasa a `stale`; otra instancia puede no tenerlo.
@@ -103,7 +103,7 @@ Vercel ejecuta `data:publish` antes de compilar. Por ello un build puede cambiar
 
 ### Pantalla vacía o mapa sin fondo
 
-Compruebe WebGL2 y red hacia OpenFreeMap. En físico, compruebe también Esri. Los GeoJSON pueden estar correctos aunque las teselas fallen.
+Compruebe WebGL2 y red hacia OpenFreeMap. En físico, compruebe también el acceso a `elevation-tiles-prod` de AWS Open Data. Los GeoJSON pueden estar correctos aunque las teselas fallen.
 
 ### “No se pudo cargar el catálogo”
 
