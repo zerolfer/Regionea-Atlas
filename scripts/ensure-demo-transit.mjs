@@ -28,7 +28,7 @@ async function main() {
     ['cta:centro-demo', 'Eje central CTA', 'CTA', '#327d70', [[-5.6764, 43.5364], [-5.75, 43.47], [-5.854, 43.366]]],
     ['alsa:a8-demo', 'Gijón–Avilés–Aeropuerto', 'ALSA', '#386a9c', [[-5.6764, 43.5364], [-5.79, 43.55], [-5.9222, 43.555], [-6.0346, 43.5636]]],
   ].map(([id, name, provider, color, coordinates]) => ({
-    type: 'Feature', properties: { id, entityType: 'route', name, provider, freshness: 'demo', color },
+    type: 'Feature', properties: { id, entityType: 'route', name, provider, freshness: 'demo', color, transportMode: provider === 'Renfe' ? 'rail' : 'bus', scope: 'regional' },
     geometry: { type: 'LineString', coordinates },
   }))
   const stops = [
@@ -38,7 +38,7 @@ async function main() {
     ['alsa:aviles-demo', 'Avilés', 'ALSA', '#386a9c', [-5.9222, 43.555]],
     ['alsa:aeropuerto-demo', 'Aeropuerto de Asturias', 'ALSA', '#386a9c', [-6.0346, 43.5636]],
   ].map(([id, name, provider, color, coordinates]) => ({
-    type: 'Feature', properties: { id, entityType: 'stop', name, provider, freshness: 'demo', color },
+    type: 'Feature', properties: { id, entityType: 'stop', name, provider, freshness: 'demo', color, transportMode: provider === 'Renfe' ? 'rail' : 'bus', scope: 'local' },
     geometry: { type: 'Point', coordinates },
   }))
   const departures = {

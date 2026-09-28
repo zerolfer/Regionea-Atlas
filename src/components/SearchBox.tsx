@@ -1,23 +1,47 @@
 import { useMemo, useState } from 'react'
-import { PHYSICAL_KIND_LABELS, TERRITORY_KIND_LABELS, searchEntities } from '../data/atlas'
-import type { AtlasEntity } from '../types'
+import { normalizeSearch } from '../data/atlas'
+import type { MapMode, SearchItem } from '../types'
 
-type Props = { entities: AtlasEntity[]; onSelect: (entity: AtlasEntity) => void }
+type Props = { items: SearchItem[]; mode: MapMode; onSelect: (item: SearchItem) => void }
 
-export default function SearchBox({ entities, onSelect }: Props) {
+const SEARCH_COPY: Record<MapMode, { label: string; placeholder: string; empty: string }> = {
+  political: { label: 'Buscar territorios', placeholder: 'Buscar un territorio…', empty: 'No hay territorios coincidentes.' },
+  physical: { label: 'Buscar accidentes geográficos', placeholder: 'Buscar un río, pico o sierra…', empty: 'No hay accidentes geográficos coincidentes.' },
+  transit: { label: 'Buscar líneas y paradas', placeholder: 'Buscar una línea o parada…', empty: 'No hay líneas ni paradas coincidentes.' },
+}
+
+function search(items: SearchItem[], query: string) {
+  const normalizedQuery = normalizeSearch(query.trim())
+  if (normalizedQuery.length < 2) return []
+  return items
+    .map((item) => {
+      const names = [item.name, ...item.aliases].map(normalizeSearch)
+      const score = names.some((name) => name === normalizedQuery) ? 0
+        : names.some((name) => name.startsWith(normalizedQuery)) ? 1
+          : names.some((name) => name.includes(normalizedQuery)) ? 2 : 99
+      return { item, score }
+    })
+    .filter(({ score }) => score < 99)
+    .sort((a, b) => a.score - b.score || a.item.name.localeCompare(b.item.name, 'es'))
+    .slice(0, 12)
+    .map(({ item }) => item)
+}
+
+export default function SearchBox({ items, mode, onSelect }: Props) {
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
-  const results = useMemo(() => searchEntities(entities, query), [entities, query])
+  const results = useMemo(() => search(items, query), [items, query])
   const visible = focused && query.trim().length >= 2
+  const copy = SEARCH_COPY[mode]
 
   return (
     <div className="search-wrap">
       <label className="search-box">
         <span aria-hidden="true">⌕</span>
-        <span className="sr-only">Buscar territorios y accidentes geográficos</span>
+        <span className="sr-only">{copy.label}</span>
         <input
           value={query}
-          placeholder="Buscar un territorio o lugar…"
+          placeholder={copy.placeholder}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => window.setTimeout(() => setFocused(false), 140)}
@@ -28,12 +52,12 @@ export default function SearchBox({ entities, onSelect }: Props) {
       </label>
       {visible && (
         <div id="search-results" className="search-results" role="listbox">
-          {results.length ? results.map((entity) => (
-            <button key={entity.id} role="option" onClick={() => { onSelect(entity); setQuery(entity.name); setFocused(false) }}>
-              <span>{entity.name}</span>
-              <small>{PHYSICAL_KIND_LABELS[entity.kind] || TERRITORY_KIND_LABELS[entity.kind] || entity.kind}</small>
+          {results.length ? results.map((item) => (
+            <button key={item.id} role="option" onClick={() => { onSelect(item); setQuery(item.name); setFocused(false) }}>
+              <span>{item.name}</span>
+              <small>{item.kindLabel}</small>
             </button>
-          )) : <p>No hay coincidencias en el atlas.</p>}
+          )) : <p>{copy.empty}</p>}
         </div>
       )}
     </div>
