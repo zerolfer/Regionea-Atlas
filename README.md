@@ -23,6 +23,18 @@ No se necesita ninguna clave en el navegador. MapLibre utiliza un fondo vectoria
 
 MapLibre 6 requiere WebGL2.
 
+## Documentación para desarrollo
+
+La documentación técnica autosuficiente está organizada por responsabilidad:
+
+- [Índice técnico](docs/README.md)
+- [Arquitectura y alcance](docs/architecture.md)
+- [Contratos de datos](docs/contracts.md)
+- [Pipelines y ampliación de datos](docs/data-extension-guide.md)
+- [Operación, calidad y diagnóstico](docs/operations.md)
+
+Los contratos separan los invariantes persistidos de las guías operativas. La sección de problemas conocidos documenta también las diferencias entre la arquitectura objetivo y la implementación actual.
+
 ## Desarrollo local
 
 Requisitos: Node.js 22 o posterior y npm.
@@ -66,7 +78,7 @@ El snapshot desplegable se encuentra en `public/data/atlas`. Para regenerarlo en
 npm run data:sync
 ```
 
-El proceso descarga, normaliza a los contratos internos, simplifica, calcula superficies y cajas geográficas, incorpora licencia, fuente y rango de zoom por colección, verifica checksums y publica al final un `manifest.json` atómico. Las fuentes principales son Natural Earth, IGN/CNIG y SITPA/SADEI. El contenido editorial vive en Markdown bajo `content/territories` y puede regenerarse por separado:
+El proceso descarga, normaliza a los contratos internos, simplifica, calcula superficies y cajas geográficas, incorpora licencia, fuente y rango de zoom por colección, verifica checksums y escribe `manifest.json` al final. Las fuentes principales son Natural Earth, IGN/CNIG y SITPA/SADEI. El contenido editorial vive en Markdown bajo `content/territories` y puede regenerarse por separado:
 
 ```bash
 npm run data:content

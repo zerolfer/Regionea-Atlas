@@ -1,14 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="300" fill="#0ea5e9"/>
-  <rect x="16" y="16" width="480" height="480" rx="300" fill="none" stroke="#ffffff" stroke-width="8" opacity=".95"/>
-  <!-- Pin -->
-  <path d="M256 110c-70 0-122 51-122 116 0 77 89 158 114 180a12 12 0 0 0 16 0c25-22 114-103 114-180 0-65-52-116-122-116z"
-        fill="#ffffff" fill-opacity=".12" stroke="#ffffff" stroke-opacity=".85" stroke-width="8"/>
-  <!-- Anillos internos -->
-  <g fill="none" stroke="#ffffff" stroke-width="6">
-    <circle cx="256" cy="226" r="64"  opacity="1"/>
-    <circle cx="256" cy="226" r="92"  opacity=".9"/>
-    <circle cx="256" cy="226" r="118" opacity=".8"/>
-  </g>
-  <circle cx="256" cy="226" r="10" fill="#00141f" opacity=".9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Regionea Atlas">
+  <circle cx="64" cy="64" r="60" fill="#f7f2e8"/>
+  <circle cx="64" cy="64" r="56" fill="none" stroke="#29251f" stroke-width="5"/>
+  <path d="M27 73c8-20 17-35 35-39 17-4 34 6 38 21 5 18-8 36-29 41-17 4-35-3-44-23Z" fill="#c96541"/>
+  <path d="M37 69c6-14 15-23 27-25 11-2 22 4 25 14 3 12-6 23-20 27-12 3-25-2-32-16Z" fill="none" stroke="#f7f2e8" stroke-width="5" stroke-linecap="round"/>
+  <path d="M49 64c4-7 8-11 15-12 7-1 13 3 14 9 1 7-4 13-12 15-7 1-13-3-17-12Z" fill="none" stroke="#29251f" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="64" cy="63" r="5" fill="#f7f2e8"/>
+  <path d="M82 86 99 103" fill="none" stroke="#29251f" stroke-width="7" stroke-linecap="round"/>
 </svg>

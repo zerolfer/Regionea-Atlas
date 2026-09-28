@@ -65,7 +65,8 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
     relief: ['physical-europe-ranges', 'physical-ranges'],
     peaks: ['physical-europe-peaks', 'physical-peaks'],
     hydrography: ['physical-europe-rivers', 'physical-europe-lakes', 'physical-rivers', 'physical-water'],
-    valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts'], protected: ['physical-protected'],
+    valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points'], protected: ['physical-protected'],
+    hypsometry: ['physical-hypsometry'], terrain3d: [],
   }
   Object.entries(groups).forEach(([filter, layers]) => {
     layers.forEach((layer) => {
@@ -77,16 +78,22 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
     const pointKinds = [
       ...(filters.has('relief') ? ['range'] : []),
       ...(filters.has('peaks') ? ['peak'] : []),
-      ...(filters.has('coast') ? ['cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island'] : []),
     ]
     map.setFilter('physical-point-labels', ['in', ['get', 'kind'], ['literal', pointKinds]] as FilterSpecification)
   }
+  if (map.getLayer('physical-coast-labels')) map.setLayoutProperty('physical-coast-labels', 'visibility', filters.has('coast') ? 'visible' : 'none')
   if (map.getLayer('physical-area-labels')) {
     const areaKinds = [
       ...(filters.has('hydrography') ? ['lake', 'reservoir'] : []),
       ...(filters.has('protected') ? ['protected-area'] : []),
     ]
     map.setFilter('physical-area-labels', ['in', ['get', 'kind'], ['literal', areaKinds]] as FilterSpecification)
+  }
+  if (map.getSource('terrain-dem')) {
+    const terrainEnabled = filters.has('terrain3d')
+    map.setTerrain(terrainEnabled ? { source: 'terrain-dem', exaggeration: 1.35 } : null)
+    if (terrainEnabled && map.getPitch() < 20) map.easeTo({ pitch: 45, duration: 550 })
+    if (!terrainEnabled && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 })
   }
 }
 
