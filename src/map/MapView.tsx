@@ -3,7 +3,7 @@ import { AttributionControl, Map, NavigationControl, setWorkerUrl } from 'maplib
 import type { FilterSpecification, GeoJSONSource, MapLayerMouseEvent, MapGeoJSONFeature } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { buildStyle, PHYSICAL_INTERACTIVE_LAYERS, POLITICAL_INTERACTIVE_LAYERS, POLITICAL_LEVEL_RANGES, TRANSIT_INTERACTIVE_LAYERS } from './style'
+import { buildStyle, PHYSICAL_INTERACTIVE_LAYERS, POLITICAL_INTERACTIVE_LAYERS, POLITICAL_LEVEL_RANGES, TRANSIT_INTERACTIVE_LAYERS, TRANSIT_ROUTE_LAYERS } from './style'
 import { geometryBounds } from '../data/transit'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
@@ -110,12 +110,12 @@ function applyTransitFilters(map: Map, filters: TransitFilters) {
   const providerFilter = ['in', ['get', 'provider'], ['literal', [...filters.providers]]]
   const modeFilter = ['in', transitModeExpression(), ['literal', [...filters.modes]]]
   const filter = ['all', providerFilter, modeFilter] as unknown as FilterSpecification
-  ;['transit-routes-line', 'transit-stops-circle', 'transit-stops-labels'].forEach((layer) => {
+  ;['transit-stops-circle', 'transit-stops-labels'].forEach((layer) => {
     if (map.getLayer(layer)) map.setFilter(layer, filter)
   })
-  if (map.getLayer('transit-routes-overview')) {
-    map.setFilter('transit-routes-overview', ['all', filter, ['==', transitModeExpression(), 'rail']] as unknown as FilterSpecification)
-  }
+  TRANSIT_ROUTE_LAYERS.forEach(({ id, extentClass }) => {
+    if (map.getLayer(id)) map.setFilter(id, ['all', filter, ['==', ['get', 'extentClass'], extentClass]] as unknown as FilterSpecification)
+  })
   ;['transit-vehicles-circle', 'transit-selected-vehicle'].forEach((layer) => {
     if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', filters.showRealtime ? 'visible' : 'none')
   })
@@ -144,16 +144,9 @@ function applySelection(map: Map, mode: MapMode, selected: AtlasEntity | null, t
       if (map.getLayer(candidate)) map.setFilter(candidate, candidate === layer ? transitFilter : ['==', ['get', 'id'], '__none__'])
     })
     const dimmed = Boolean(transitSelection)
-    if (map.getLayer('transit-routes-line')) map.setPaintProperty('transit-routes-line', 'line-opacity', dimmed ? 0.14 : [
-      'interpolate', ['linear'], ['zoom'], 8.5,
-      ['case',
-        ['==', ['coalesce', ['get', 'transportMode'], 'bus'], 'rail'], 0.82,
-        ['==', ['coalesce', ['get', 'scope'], 'regional'], 'local'], 0.16,
-        0.48,
-      ],
-      10.5, 0.86,
-    ])
-    if (map.getLayer('transit-routes-overview')) map.setPaintProperty('transit-routes-overview', 'line-opacity', dimmed ? 0.14 : 0.86)
+    TRANSIT_ROUTE_LAYERS.forEach(({ id, minZoom }) => {
+      if (map.getLayer(id)) map.setPaintProperty(id, 'line-opacity', dimmed ? 0.14 : ['interpolate', ['linear'], ['zoom'], minZoom, 0.58, Math.min(11, minZoom + 2), 0.86])
+    })
     if (map.getLayer('transit-stops-circle')) map.setPaintProperty('transit-stops-circle', 'circle-opacity', dimmed ? 0.22 : 1)
     if (map.getLayer('transit-stops-labels')) map.setPaintProperty('transit-stops-labels', 'text-opacity', dimmed ? 0.2 : 1)
     if (map.getLayer('transit-vehicles-circle')) map.setPaintProperty('transit-vehicles-circle', 'circle-opacity', dimmed ? 0.2 : 1)
@@ -243,7 +236,12 @@ export default function MapView(props: Props) {
         current.onTransitClick({
           type, id: String(feature.properties?.id), name: String(feature.properties?.name),
           provider: String(feature.properties?.provider || ''), freshness, transportMode,
-          scope: feature.properties?.scope, bbox: bounds,
+          extentClass: feature.properties?.extentClass,
+          routeLengthKm: Number(feature.properties?.routeLengthKm) || undefined,
+          routeSpanKm: Number(feature.properties?.routeSpanKm) || undefined,
+          routeStopCount: Number(feature.properties?.routeStopCount) || undefined,
+          displayMinZoom: Number(feature.properties?.displayMinZoom) || undefined,
+          bbox: bounds,
           center: bounds ? [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2] : null,
         })
       } else {

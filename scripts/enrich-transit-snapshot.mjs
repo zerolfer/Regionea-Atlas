@@ -1,34 +1,10 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { assertRouteClassification, classifyRoute, transitClassificationManifest } from './lib/transit-classification.mjs'
 
 const ROOT = process.cwd()
 const TRANSIT = path.join(ROOT, 'public', 'data', 'atlas', 'transit')
-const ASTURIAS_BOUNDS = [-7.25, 42.9, -4.45, 43.75]
-
-function positions(value, result = []) {
-  if (typeof value?.[0] === 'number') result.push(value)
-  else if (Array.isArray(value)) value.forEach((child) => positions(child, result))
-  return result
-}
-
-function geometryBounds(geometry) {
-  const points = positions(geometry?.coordinates)
-  if (!points.length) return null
-  const longitudes = points.map(([longitude]) => longitude)
-  const latitudes = points.map(([, latitude]) => latitude)
-  return [Math.min(...longitudes), Math.min(...latitudes), Math.max(...longitudes), Math.max(...latitudes)]
-}
-
-function scope(geometry) {
-  const bounds = geometryBounds(geometry)
-  if (!bounds) return 'regional'
-  if (bounds[0] < ASTURIAS_BOUNDS[0] || bounds[2] > ASTURIAS_BOUNDS[2] || bounds[1] < ASTURIAS_BOUNDS[1] || bounds[3] > ASTURIAS_BOUNDS[3]) return 'external'
-  const middleLatitude = (bounds[1] + bounds[3]) / 2
-  const widthKm = (bounds[2] - bounds[0]) * 111 * Math.cos(middleLatitude * Math.PI / 180)
-  const heightKm = (bounds[3] - bounds[1]) * 111
-  return Math.hypot(widthKm, heightKm) <= 24 ? 'local' : 'regional'
-}
-
+const INITIAL_COVERAGE = { id: 'es-as', bounds: [-7.25, 42.9, -4.45, 43.75], contextBounds: [-7.5, 42.72, -4.2, 43.93] }
 function mode(properties) {
   if (properties.transportMode) return properties.transportMode
   const routeType = Number(properties.routeType)
@@ -43,11 +19,28 @@ async function enrich(name) {
   const collection = JSON.parse(await readFile(file, 'utf8'))
   collection.features.forEach((feature) => {
     feature.properties.transportMode = mode(feature.properties)
-    feature.properties.scope = feature.properties.entityType === 'route' ? scope(feature.geometry) : 'local'
+    delete feature.properties.scope
+    if (feature.properties.entityType === 'route') {
+      try {
+        assertRouteClassification(feature.properties)
+      } catch {
+        Object.assign(feature.properties, classifyRoute(feature.geometry.coordinates, {
+          stopCount: feature.properties.routeStopCount || 0,
+          basis: 'published-geometry',
+        }))
+      }
+    }
   })
   await writeFile(file, `${JSON.stringify(collection)}\n`, 'utf8')
   return collection.features.length
 }
 
 const [routes, stops] = await Promise.all([enrich('routes.geojson'), enrich('stops.geojson')])
+const manifestFile = path.join(TRANSIT, 'manifest.json')
+const manifest = JSON.parse(await readFile(manifestFile, 'utf8'))
+manifest.routes = routes
+manifest.stops = stops
+manifest.coverage ||= INITIAL_COVERAGE
+manifest.classification = transitClassificationManifest()
+await writeFile(manifestFile, `${JSON.stringify(manifest)}\n`, 'utf8')
 process.stdout.write(`Snapshot enriquecido: ${routes} líneas y ${stops} paradas.\n`)

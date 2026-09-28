@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
+import { assertRouteClassification, TRANSIT_CLASSIFICATION_VERSION } from './lib/transit-classification.mjs'
 
 const root = process.cwd()
 const atlasDir = path.join(root, 'public', 'data', 'atlas')
@@ -97,4 +98,31 @@ for (const entity of catalog.territories) {
 }
 
 for (const name of territorialCollections) assert(manifest.collections[name], `Falta colección territorial ${name}`)
+
+const transitManifest = await json('transit/manifest.json')
+const transitRoutes = await json('transit/routes.geojson')
+const transitStops = await json('transit/stops.geojson')
+assert(transitManifest.classification?.version === TRANSIT_CLASSIFICATION_VERSION, 'Transporte: versión de clasificación ausente o incompatible')
+assert(transitManifest.classification?.method === 'geometry-scale', 'Transporte: método de clasificación no válido')
+assert(typeof transitManifest.coverage?.id === 'string' && transitManifest.coverage.id, 'Transporte: cobertura sin identificador')
+assert(Array.isArray(transitManifest.coverage?.bounds) && transitManifest.coverage.bounds.length === 4 && transitManifest.coverage.bounds.every(Number.isFinite), 'Transporte: límites de cobertura no válidos')
+assert(Array.isArray(transitManifest.coverage?.contextBounds) && transitManifest.coverage.contextBounds.length === 4 && transitManifest.coverage.contextBounds.every(Number.isFinite), 'Transporte: límites contextuales no válidos')
+assert(transitRoutes.type === 'FeatureCollection' && transitRoutes.features.length === transitManifest.routes, 'Transporte: recuento de rutas incorrecto')
+assert(transitStops.type === 'FeatureCollection' && transitStops.features.length === transitManifest.stops, 'Transporte: recuento de paradas incorrecto')
+const transitIds = new Set()
+for (const feature of [...transitRoutes.features, ...transitStops.features]) {
+  const properties = feature?.properties || {}
+  const context = `transporte/${properties.id || 'sin-id'}`
+  assert(feature.type === 'Feature' && feature.geometry?.coordinates, `${context}: geometría ausente`)
+  assert(typeof properties.id === 'string' && properties.id.includes(':'), `${context}: ID sin espacio de nombres`)
+  const identity = `${properties.entityType}:${properties.id}`
+  assert(!transitIds.has(identity), `${context}: ID duplicado dentro del tipo ${properties.entityType}`)
+  transitIds.add(identity)
+  assert(properties.provider && properties.name, `${context}: proveedor o nombre ausente`)
+  assert(['bus', 'rail', 'ferry', 'air'].includes(properties.transportMode), `${context}: medio no válido`)
+  assert(!('scope' in properties), `${context}: conserva el campo obsoleto scope`)
+  inspectCoordinates(feature.geometry.coordinates, context)
+  if (properties.entityType === 'route') assertRouteClassification(properties, context)
+  else assert(properties.entityType === 'stop', `${context}: tipo de entidad no válido`)
+}
 console.log(`Atlas válido: ${catalog.territories.length} territorios, ${catalog.physical.length} accidentes, ${ids.size} geometrías.`)

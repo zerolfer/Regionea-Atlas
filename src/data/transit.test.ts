@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { geometryBounds, transitMode, transitScope } from './transit'
+import { geometryBounds, transitMode } from './transit'
 
 describe('normalización cartográfica del transporte', () => {
-  it('calcula el encuadre y el alcance de una ruta', () => {
+  it('calcula el encuadre de una ruta sin clasificarla en el navegador', () => {
     const local = { type: 'LineString' as const, coordinates: [[-5.86, 43.36], [-5.75, 43.42]] }
-    const external = { type: 'LineString' as const, coordinates: [[-5.86, 43.36], [-3.7, 40.4]] }
 
     expect(geometryBounds(local)).toEqual([-5.86, 43.36, -5.75, 43.42])
-    expect(transitScope(local)).toBe('local')
-    expect(transitScope(external)).toBe('external')
   })
 
   it('respeta route_type y usa el proveedor únicamente como respaldo', () => {
