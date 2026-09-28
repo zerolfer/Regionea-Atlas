@@ -242,31 +242,15 @@ function physicalLayers(): LayerSpecification[] {
 
 function transitLayers(): LayerSpecification[] {
   return [
-    {
-      id: 'transit-routes-overview', type: 'line', source: 'transit-routes', minzoom: 6.5, maxzoom: 8.7,
-      filter: ['==', ['coalesce', ['get', 'transportMode'], ['case', ['==', ['get', 'provider'], 'RENFE'], 'rail', 'bus']], 'rail'],
+    ...TRANSIT_ROUTE_LAYERS.map(({ id, extentClass, minZoom, baseWidth }) => ({
+      id, type: 'line' as const, source: 'transit-routes', minzoom: minZoom,
+      filter: ['==', ['get', 'extentClass'], extentClass] as FilterSpecification,
       paint: {
         'line-color': ['coalesce', ['get', 'color'], '#316b8c'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 6.5, 1.4, 8.7, 2.4],
-        'line-opacity': 0.86,
+        'line-width': ['interpolate', ['linear'], ['zoom'], minZoom, baseWidth, 11, 4.5],
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], minZoom, 0.58, Math.min(11, minZoom + 2), 0.86],
       },
-    },
-    {
-      id: 'transit-routes-line', type: 'line', source: 'transit-routes', minzoom: 8.5,
-      paint: {
-        'line-color': ['coalesce', ['get', 'color'], '#316b8c'],
-        'line-width': ['interpolate', ['linear'], ['zoom'], 8.5, ['case', ['==', ['coalesce', ['get', 'transportMode'], 'bus'], 'rail'], 2, 0.7], 10.5, 4.5],
-        'line-opacity': [
-          'interpolate', ['linear'], ['zoom'], 8.5,
-          ['case',
-            ['==', ['coalesce', ['get', 'transportMode'], 'bus'], 'rail'], 0.82,
-            ['==', ['coalesce', ['get', 'scope'], 'regional'], 'local'], 0.16,
-            0.48,
-          ],
-          10.5, 0.86,
-        ],
-      },
-    },
+    } as LayerSpecification)),
     {
       id: 'transit-stops-circle', type: 'circle', source: 'transit-stops', minzoom: 10,
       paint: {
@@ -297,6 +281,13 @@ function transitLayers(): LayerSpecification[] {
     },
   ]
 }
+
+export const TRANSIT_ROUTE_LAYERS = [
+  { id: 'transit-routes-long-distance', extentClass: 'long-distance', minZoom: 5, baseWidth: 1.5 },
+  { id: 'transit-routes-regional', extentClass: 'regional', minZoom: 6.5, baseWidth: 1.25 },
+  { id: 'transit-routes-local', extentClass: 'local', minZoom: 8, baseWidth: 1 },
+  { id: 'transit-routes-urban', extentClass: 'urban', minZoom: 9.5, baseWidth: 0.8 },
+] as const
 
 export function buildStyle(mode: MapMode): StyleSpecification {
   const sources: StyleSpecification['sources'] = {
@@ -372,4 +363,4 @@ export const PHYSICAL_INTERACTIVE_LAYERS = [
   'physical-rivers', 'physical-water', 'physical-protected', 'physical-peaks',
   'physical-river-labels', 'physical-point-labels', 'physical-area-labels',
 ]
-export const TRANSIT_INTERACTIVE_LAYERS = ['transit-selected-route', 'transit-selected-stop', 'transit-selected-vehicle', 'transit-routes-line', 'transit-routes-overview', 'transit-stops-circle', 'transit-stops-labels', 'transit-vehicles-circle']
+export const TRANSIT_INTERACTIVE_LAYERS = ['transit-selected-route', 'transit-selected-stop', 'transit-selected-vehicle', ...TRANSIT_ROUTE_LAYERS.map(({ id }) => id), 'transit-stops-circle', 'transit-stops-labels', 'transit-vehicles-circle']

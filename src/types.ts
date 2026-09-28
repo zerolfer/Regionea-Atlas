@@ -104,7 +104,7 @@ export type EditorialEntry = {
 export type PhysicalFilter = 'relief' | 'peaks' | 'hydrography' | 'valleys' | 'coast' | 'protected'
 export type TransitFreshness = 'live' | 'scheduled' | 'stale' | 'demo'
 export type TransitMode = 'bus' | 'rail' | 'ferry' | 'air'
-export type TransitScope = 'local' | 'regional' | 'external'
+export type TransitExtentClass = 'urban' | 'local' | 'regional' | 'long-distance'
 
 export type TransitSelection = {
   type: 'route' | 'stop' | 'vehicle'
@@ -113,7 +113,11 @@ export type TransitSelection = {
   provider: string
   freshness: TransitFreshness
   transportMode?: TransitMode
-  scope?: TransitScope
+  extentClass?: TransitExtentClass
+  routeLengthKm?: number
+  routeSpanKm?: number
+  routeStopCount?: number
+  displayMinZoom?: number
   bbox?: [number, number, number, number] | null
   center?: [number, number] | null
 }
@@ -148,5 +152,4 @@ export type UserLocation = {
   accuracy: number
   token: number
 }
-
 

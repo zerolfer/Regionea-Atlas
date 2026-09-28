@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection, Geometry, Position } from 'geojson'
-import type { SearchItem, TransitFreshness, TransitMode, TransitScope } from '../types'
+import type { SearchItem, TransitExtentClass, TransitFreshness, TransitMode } from '../types'
 
 type TransitProperties = {
   id: string
@@ -9,7 +9,12 @@ type TransitProperties = {
   name?: string
   shortName?: string
   transportMode?: TransitMode
-  scope?: TransitScope
+  extentClass?: TransitExtentClass
+  routeLengthKm?: number
+  routeSpanKm?: number
+  routeStopCount?: number
+  displayMinZoom?: number
+  classificationVersion?: number
   routeType?: number | string
 }
 
@@ -61,17 +66,6 @@ export function transitMode(properties: TransitProperties): TransitMode {
   return 'bus'
 }
 
-export function transitScope(geometry: Geometry): TransitScope {
-  const bounds = geometryBounds(geometry)
-  if (!bounds) return 'regional'
-  const outsideAsturias = bounds[0] < -7.25 || bounds[2] > -4.45 || bounds[1] < 42.9 || bounds[3] > 43.75
-  if (outsideAsturias) return 'external'
-  const middleLatitude = (bounds[1] + bounds[3]) / 2
-  const widthKm = (bounds[2] - bounds[0]) * 111 * Math.cos(middleLatitude * Math.PI / 180)
-  const heightKm = (bounds[3] - bounds[1]) * 111
-  return Math.hypot(widthKm, heightKm) <= 24 ? 'local' : 'regional'
-}
-
 function toSearchItem(feature: Feature<Geometry, TransitProperties>): SearchItem | null {
   const { properties, geometry } = feature
   if (!properties?.id || !geometry) return null
@@ -80,7 +74,7 @@ function toSearchItem(feature: Feature<Geometry, TransitProperties>): SearchItem
   const center = bbox ? [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2] as [number, number] : null
   const type = properties.entityType
   return {
-    id: properties.id,
+    id: `${type}:${properties.id}`,
     name: properties.name || properties.shortName || properties.id,
     aliases: [properties.shortName || '', properties.provider || ''].filter(Boolean),
     kindLabel: type === 'route' ? `Línea · ${properties.provider || 'Transporte'}` : type === 'stop' ? `Parada · ${properties.provider || 'Transporte'}` : `Vehículo · ${properties.provider || 'Transporte'}`,
@@ -91,7 +85,11 @@ function toSearchItem(feature: Feature<Geometry, TransitProperties>): SearchItem
       provider: properties.provider || '',
       freshness: properties.freshness || 'scheduled',
       transportMode: mode,
-      scope: properties.scope || (type === 'route' ? transitScope(geometry) : 'local'),
+      extentClass: properties.extentClass,
+      routeLengthKm: properties.routeLengthKm,
+      routeSpanKm: properties.routeSpanKm,
+      routeStopCount: properties.routeStopCount,
+      displayMinZoom: properties.displayMinZoom,
       bbox,
       center,
     },
@@ -109,6 +107,12 @@ export async function loadTransitCatalog(signal?: AbortSignal): Promise<TransitC
     fetchCollection('/data/atlas/transit/routes.geojson', signal),
     fetchCollection('/data/atlas/transit/stops.geojson', signal),
   ])
+  routes.features.forEach((feature) => {
+    const properties = feature.properties
+    if (properties.entityType !== 'route' || properties.classificationVersion !== 1 || !properties.extentClass || !Number.isFinite(properties.displayMinZoom)) {
+      throw new Error(`Clasificación cartográfica ausente o incompatible en ${properties.id}`)
+    }
+  })
   const features = [...routes.features, ...stops.features]
   const items = features.map(toSearchItem).filter((item): item is SearchItem => Boolean(item))
   const providers = [...new Set(features.map((feature) => feature.properties?.provider).filter((provider): provider is string => Boolean(provider)))].sort()

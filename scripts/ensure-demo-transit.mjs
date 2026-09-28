@@ -1,7 +1,9 @@
 import { access, mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { classifyRoute, transitClassificationManifest } from './lib/transit-classification.mjs'
 
 const output = path.join(process.cwd(), 'public', 'data', 'atlas', 'transit')
+const INITIAL_COVERAGE = { id: 'es-as', bounds: [-7.25, 42.9, -4.45, 43.75], contextBounds: [-7.5, 42.72, -4.2, 43.93] }
 
 async function exists(file) {
   try { await access(file); return true } catch { return false }
@@ -28,7 +30,7 @@ async function main() {
     ['cta:centro-demo', 'Eje central CTA', 'CTA', '#327d70', [[-5.6764, 43.5364], [-5.75, 43.47], [-5.854, 43.366]]],
     ['alsa:a8-demo', 'Gijón–Avilés–Aeropuerto', 'ALSA', '#386a9c', [[-5.6764, 43.5364], [-5.79, 43.55], [-5.9222, 43.555], [-6.0346, 43.5636]]],
   ].map(([id, name, provider, color, coordinates]) => ({
-    type: 'Feature', properties: { id, entityType: 'route', name, provider, freshness: 'demo', color, transportMode: provider === 'Renfe' ? 'rail' : 'bus', scope: 'regional' },
+    type: 'Feature', properties: { id, entityType: 'route', name, provider, freshness: 'demo', color, transportMode: provider === 'Renfe' ? 'rail' : 'bus', ...classifyRoute(coordinates, { basis: 'published-geometry' }) },
     geometry: { type: 'LineString', coordinates },
   }))
   const stops = [
@@ -38,7 +40,7 @@ async function main() {
     ['alsa:aviles-demo', 'Avilés', 'ALSA', '#386a9c', [-5.9222, 43.555]],
     ['alsa:aeropuerto-demo', 'Aeropuerto de Asturias', 'ALSA', '#386a9c', [-6.0346, 43.5636]],
   ].map(([id, name, provider, color, coordinates]) => ({
-    type: 'Feature', properties: { id, entityType: 'stop', name, provider, freshness: 'demo', color, transportMode: provider === 'Renfe' ? 'rail' : 'bus', scope: 'local' },
+    type: 'Feature', properties: { id, entityType: 'stop', name, provider, freshness: 'demo', color, transportMode: provider === 'Renfe' ? 'rail' : 'bus' },
     geometry: { type: 'Point', coordinates },
   }))
   const departures = {
@@ -53,7 +55,7 @@ async function main() {
     write('stops.geojson', { type: 'FeatureCollection', features: stops }),
     write('vehicles.geojson', { type: 'FeatureCollection', features: [] }),
     ...Object.entries(departures).map(([stopId, items]) => write(`departures/${departureFilename(stopId)}`, { stopId, departures: items })),
-    write('manifest.json', { generatedAt: new Date().toISOString(), status: 'demo', routes: routes.length, stops: stops.length, providers: { cta: { status: 'demo' }, alsa: { status: 'demo' }, renfe: { status: 'demo' } } }),
+    write('manifest.json', { generatedAt: new Date().toISOString(), status: 'demo', routes: routes.length, stops: stops.length, coverage: INITIAL_COVERAGE, classification: transitClassificationManifest(), providers: { cta: { status: 'demo' }, alsa: { status: 'demo' }, renfe: { status: 'demo' } } }),
   ])
   process.stdout.write('Transporte: snapshot de demostración creado.\n')
 }
