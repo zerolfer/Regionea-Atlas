@@ -49,6 +49,8 @@ Las actualizaciones de capas esperan `style.load`, no `isStyleLoaded()` (que tam
 
 No hay gestor global de estado ni router externo. El path y `history.pushState`/`replaceState` son gestionados por `App.tsx` y `src/url-state.ts`.
 
+La cabecera crea un contexto de apilamiento propio. Cuando el buscador abre resultados, se eleva temporalmente a `z-index: 46`, por encima de la hoja móvil (40) y el selector contextual (45), pero por debajo de los diálogos (50). Al cerrar los resultados recupera su prioridad habitual; buscar no cambia el estado de apertura de la hoja.
+
 ## Modos del mapa
 
 ### Político

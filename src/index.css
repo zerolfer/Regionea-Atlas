@@ -31,6 +31,9 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
   display: flex; align-items: center; gap: 12px; pointer-events: none;
 }
 .topbar > * { pointer-events: auto; }
+/* Search results escape the header's stacking context only while open.
+   Keep them above the mobile sheet (40) and context picker (45), below dialogs (50). */
+.topbar:has(.search-results) { z-index: 46; }
 .brand {
   display: flex; align-items: center; gap: 10px; height: 52px; padding: 7px 14px 7px 8px;
   border: 1px solid rgba(78, 65, 50, .16); border-radius: 15px; background: rgba(255,253,248,.96);
