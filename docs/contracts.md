@@ -89,9 +89,11 @@ En el snapshot actual las parroquias y barrios son `statistical`; los países de
 
 ## Accidentes físicos
 
-Tipos reconocidos: `peak`, `range`, `river`, `lake`, `reservoir`, `valley`, `coast`, `cape`, `bay`, `gulf`, `estuary`, `cliff`, `beach`, `island` y `protected-area`.
+Tipos reconocidos: `peak`, `range`, `river`, `lake`, `reservoir`, `valley`, `coast`, `cape`, `bay`, `gulf`, `delta`, `estuary`, `cliff`, `beach`, `island` y `protected-area`.
 
-El snapshot asturiano puebla picos, sierras, ríos, lagos, embalses, espacios protegidos, cabos, bahías, rías, islas y playas. `gulf`, `cliff` y `valley` siguen preparados, pero solo se publican cuando una fuente los identifica de forma verificable. Añadir un tipo al contrato no autoriza a deducirlo de rótulos incompletos. `territoryIds` relaciona el accidente con territorios cuando la importación dispone de esa relación; actualmente el detalle asturiano usa `['es-as']` de forma general.
+El snapshot asturiano puebla picos, sierras, ríos, lagos, embalses, espacios protegidos, cabos, bahías, rías, islas y playas. El contexto Natural Earth incorpora golfos y deltas disponibles en su cobertura europea y mediterránea. Sus polígonos son áreas cartográficas de referencia para rótulos, no límites jurídicos, y llevan `boundaryStatus: 'reference'`. `cliff` y `valley` siguen preparados, pero solo se publican cuando una fuente los identifica de forma verificable. Añadir un tipo al contrato no autoriza a deducirlo de rótulos incompletos. `territoryIds` relaciona el accidente con territorios cuando la importación dispone de esa relación; actualmente el detalle asturiano usa `['es-as']` de forma general.
+
+Los nombres de playas se presentan con «Playa…», conservando el topónimo original en `localName` y `aliases`. Los IDs ya publicados no se regeneran al corregir nombres o tipos; que un ID opaco contenga un tipo antiguo no cambia el significado de `kind`.
 
 ## Manifiesto principal
 
@@ -247,7 +249,7 @@ Paths: `/mapa/politico`, `/mapa/fisico`, `/mapa/transporte`.
 
 La selección de transporte no se restaura actualmente desde `seleccion`: el parser solo resuelve ese parámetro contra `entitiesById`. Es una limitación conocida.
 
-Los valores físicos reconocidos son `relief`, `peaks`, `hydrography`, `valleys`, `coast`, `protected`, `hypsometry` y `terrain3d`. Los seis primeros forman el estado predeterminado; hipsometría y 3D requieren activación explícita.
+Los valores físicos reconocidos son `relief`, `peaks`, `hydrography`, `valleys`, `coast`, `protected`, `hypsometry` y `terrain3d`. El estado predeterminado contiene relieve, picos, hidrografía, costa y espacios protegidos; hipsometría y 3D requieren activación explícita. La interfaz solo ofrece filtros de entidades si el catálogo contiene tipos asociados según `PHYSICAL_FILTER_KINDS`: Valles queda oculto mientras no haya datos. Se sigue aceptando `valleys` en URLs antiguas. `filtros=` representa todos los filtros desactivados, no los predeterminados.
 
 ## Evolución de contratos
 

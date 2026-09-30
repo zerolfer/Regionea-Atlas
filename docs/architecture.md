@@ -41,6 +41,8 @@ El cliente no consulta directamente las fuentes administrativas ni usa claves. C
 
 `src/map/MapView.tsx` encapsula MapLibre, eventos de mapa, selección, encuadre, posición del usuario y sondeo de vehículos cada 30 segundos. El componente se carga con `React.lazy`, separando MapLibre del paquete inicial.
 
+Las actualizaciones de capas esperan `style.load`, no `isStyleLoaded()` (que también depende de teselas aún en descarga). `SelectionFocusController` conserva y consume una vez cada petición explícita de navegación del buscador o de una ficha; un clic en el mapa o una apertura del panel no reencuadran. Si el estilo cambia o el catálogo aún no ha resuelto la entidad, la petición queda pendiente. El encuadre usa el padding responsive del mapa más un pequeño margen; `fitBounds` de MapLibre suma ese margen al padding existente, no hay que duplicar el tamaño del panel.
+
 `src/map/style.ts` es el contrato visual de escalas. Declara fuentes, capas, rangos de zoom e interacción. Las escalas políticas progresan de países a barrios. En transporte, cada ruta utiliza su clase de extensión importada; las paradas aparecen desde zoom 10 y sus etiquetas desde zoom 12.
 
 `src/data/atlas.ts` carga manifiesto, catálogo y contenido editorial. `src/data/transit.ts` carga rutas y paradas, comprueba la versión de clasificación y construye el índice de búsqueda.

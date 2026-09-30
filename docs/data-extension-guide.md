@@ -6,12 +6,13 @@
 npm ci
 npm run data:sync       # descarga territorio/físico y reconstruye todo lo derivado
 npm run data:publish    # refina/valida el snapshot ya presente; no descarga territorio
+npm run data:physical:sync # actualiza costa/contexto físico sin descargar territorio
 npm run data:content    # compila content/territories a editorial.json
 npm run data:validate   # valida snapshot sin descargar
 npm run data:import-gtfs -- --feed proveedor=/ruta/feed.zip
 ```
 
-`data:sync` requiere red y puede tardar. Descarga fuentes, reproyectadas ya por sus endpoints a WGS84 cuando procede, normaliza, simplifica, calcula cajas/superficies, escribe GeoJSON y catálogo, incorpora costa y playas oficiales mediante `sync-physical-coast.mjs`, refina etiquetas físicas, compila contenido, prepara transporte y valida.
+`data:sync` requiere red y puede tardar. Descarga fuentes, reproyectadas ya por sus endpoints a WGS84 cuando procede, normaliza, simplifica, calcula cajas/superficies, escribe GeoJSON y catálogo, incorpora costa y playas oficiales mediante `sync-physical-coast.mjs`, golfos y deltas mediante `sync-physical-context.mjs`, refina etiquetas físicas, compila contenido, prepara transporte y valida.
 
 El pipeline escribe el manifiesto principal al final, pero no usa un directorio temporal para el snapshot completo. Ejecútelo en una rama limpia, revise el diff y no despliegue una ejecución interrumpida.
 
@@ -96,7 +97,13 @@ Después actualice las reglas específicas del validador, que hoy enumeran los c
 6. Añada capa visual, capa de selección y capa a `PHYSICAL_INTERACTIVE_LAYERS`.
 7. Genere etiquetas derivadas con una política de deduplicación explícita.
 
-Para costa asturiana, `sync-physical-coast.mjs` clasifica códigos oficiales de Nombres Geográficos y añade la capa de playas de Turismo. La clasificación parte del código de capa y solo usa el nombre para separar cabo, bahía y golfo dentro del grupo que la propia fuente declara conjuntamente.
+Para costa asturiana, `sync-physical-coast.mjs` clasifica códigos oficiales de Nombres Geográficos y añade la capa de playas de Turismo. La clasificación parte del código de capa y solo usa el nombre para separar tipos explícitos dentro del grupo que la propia fuente declara conjuntamente. Los rótulos completos pero ambiguos se conservan como `coast`, no se convierten por defecto en bahías. Los incompletos se omiten. Se pagina por `objectid` y se reutilizan IDs publicados aunque se corrija el tipo. El nombre visible de las playas incluye «Playa…» y mantiene el nombre original para búsquedas.
+
+El contexto costero usa las colecciones `ne_10m_geography_marine_polys` (bahías/golfos) y `ne_10m_geography_regions_polys` (deltas) de Natural Earth, filtradas a la caja contextual del atlas. No implica cobertura exhaustiva: por ejemplo, no se inventan polígonos de golfos o deltas ausentes de esas colecciones. La comprobación espacial excluye cajas que cruzan el antimeridiano, que de otro modo parecen intersectar Europa. Los códigos `ne_id`/`NE_ID` se conservan como identidad estable.
+
+Al añadir un tipo, actualice también `PHYSICAL_FILTER_KINDS` en `src/map/physical.ts`; controla qué filtros ofrece la interfaz según el catálogo. Las capas de selección se filtran por ID **y** tipo de geometría: círculos solo para puntos, trazos para líneas o contornos de polígonos. Nunca aplique un círculo a un polígono para representar su selección. Los ríos se etiquetan sobre la línea, no en el centro de su caja; la etiqueta de la selección sustituye a la normal para ese ID.
+
+En escritorio, el nombre de un río también se ofrece al pasar el puntero por su recorrido. Los lagos sin topónimo en SITPA conservan su geometría, pero no generan un rótulo vacío o un nombre inventado.
 
 Los rótulos SITPA pueden estar fragmentados en varios registros. No una palabras por proximidad sin una regla verificable: es preferible omitir un nombre a inventar un accidente.
 

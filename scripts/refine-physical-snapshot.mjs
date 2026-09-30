@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { beachDisplayName } from './sync-physical-coast.mjs'
 
 const ROOT = process.cwd()
 const ATLAS = path.join(ROOT, 'public', 'data', 'atlas')
@@ -46,7 +47,7 @@ function labelCollection(features, include) {
     type: 'FeatureCollection',
     features: features.filter(include).filter((feature) => {
       const key = `${feature.properties.kind}:${normalize(feature.properties.name)}`
-      if (!feature.properties.center || seen.has(key)) return false
+      if (!feature.properties.name?.trim() || !feature.properties.center || seen.has(key)) return false
       seen.add(key)
       return true
     }).map((feature) => ({
@@ -64,6 +65,11 @@ const seenRanges = new Set()
 asturias.features = asturias.features.filter((feature) => {
   feature.properties.name = cleanName(feature.properties.name)
   feature.properties.localName = cleanName(feature.properties.localName || feature.properties.name)
+  if (feature.properties.kind === 'beach') {
+    feature.properties.name = beachDisplayName(feature.properties.localName)
+    feature.properties.slug = normalize(feature.properties.name).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    feature.properties.aliases = [...new Set([...(feature.properties.aliases || []), feature.properties.localName])].filter((name) => name !== feature.properties.name)
+  }
   if (feature.properties.kind !== 'range') return true
   const key = normalize(feature.properties.name)
   if (!usefulRangeName(feature.properties.name) || seenRanges.has(key)) return false
@@ -72,15 +78,17 @@ asturias.features = asturias.features.filter((feature) => {
 })
 
 const asturiasLabels = labelCollection(asturias.features, (feature) => feature.properties.kind !== 'river')
-const europeLabels = labelCollection(europe.features, () => true)
+const europeLabels = labelCollection(europe.features, (feature) => feature.properties.kind !== 'river')
 catalog.physical = [...europe.features, ...asturias.features].map((feature) => ({ ...feature.properties }))
 
 const asturiasFile = await write('physical/asturias.geojson', asturias)
+const europeFile = await write('physical/europe.geojson', europe)
 const asturiasLabelsFile = await write('physical/labels-asturias.geojson', asturiasLabels)
 const europeLabelsFile = await write('physical/labels-europe.geojson', europeLabels)
 const catalogFile = await write('catalog.json', catalog)
 
 Object.assign(manifest.collections.physicalAsturias, asturiasFile, { count: asturias.features.length, bounds: bounds(asturias.features) })
+Object.assign(manifest.collections.physicalEurope, europeFile, { count: europe.features.length, bounds: bounds(europe.features) })
 Object.assign(manifest.collections.catalog, catalogFile, { count: catalog.territories.length + catalog.physical.length })
 manifest.collections.physicalAsturiasLabels = {
   url: '/data/atlas/physical/labels-asturias.geojson', ...asturiasLabelsFile, count: asturiasLabels.features.length,
@@ -88,7 +96,7 @@ manifest.collections.physicalAsturiasLabels = {
 }
 manifest.collections.physicalEuropeLabels = {
   url: '/data/atlas/physical/labels-europe.geojson', ...europeLabelsFile, count: europeLabels.features.length,
-  sourceIds: ['natural-earth'], license: 'Public domain', bounds: bounds(europeLabels.features), minZoom: 2, maxZoom: 9,
+  sourceIds: ['natural-earth'], license: 'Public domain', bounds: bounds(europeLabels.features), minZoom: 2, maxZoom: 24,
 }
 manifest.version = new Date().toISOString().slice(0, 10)
 manifest.generatedAt = new Date().toISOString()

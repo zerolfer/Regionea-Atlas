@@ -42,9 +42,14 @@ export default function SearchBox({ items, mode, onSelect }: Props) {
         <input
           value={query}
           placeholder={copy.placeholder}
+          aria-label={copy.label}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => setFocused(true)}
-          onBlur={() => window.setTimeout(() => setFocused(false), 140)}
+          onBlur={(event) => {
+            // Keep results mounted while focus moves to a result. A timeout can
+            // discard slow touch/keyboard clicks before their selection fires.
+            if (!event.currentTarget.closest('.search-wrap')?.contains(event.relatedTarget)) setFocused(false)
+          }}
           aria-expanded={visible}
           aria-controls="search-results"
         />

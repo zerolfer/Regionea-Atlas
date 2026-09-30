@@ -26,6 +26,7 @@ export type PhysicalFeatureKind =
   | 'cape'
   | 'bay'
   | 'gulf'
+  | 'delta'
   | 'estuary'
   | 'cliff'
   | 'beach'

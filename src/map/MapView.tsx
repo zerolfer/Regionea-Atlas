@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { AttributionControl, Map, NavigationControl, setWorkerUrl } from 'maplibre-gl'
+import { AttributionControl, Map, NavigationControl, Popup, setWorkerUrl } from 'maplibre-gl'
 import type { FilterSpecification, GeoJSONSource, MapLayerMouseEvent, MapGeoJSONFeature } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -7,12 +7,15 @@ import { buildStyle, PHYSICAL_INTERACTIVE_LAYERS, POLITICAL_INTERACTIVE_LAYERS, 
 import { geometryBounds } from '../data/transit'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
+import { bottomSheetHeight } from '../bottom-sheet'
+import { PHYSICAL_FILTER_KINDS, physicalSelectionFilter } from './physical'
+import { fitEntityBounds, SelectionFocusController } from './selection-focus'
 
 setWorkerUrl(workerUrl)
 const ASTURIAS_CENTER: [number, number] = [-5.86, 43.31]
 
 function viewportPadding(sheetLevel: BottomSheetLevel = 'half') {
-  const mobileBottom = sheetLevel === 'peek' ? 96 : sheetLevel === 'full' ? Math.round(window.innerHeight * 0.65) : Math.round(window.innerHeight * 0.43)
+  const mobileBottom = bottomSheetHeight(sheetLevel, window.innerHeight) + 12
   const desktopPanel = Math.min(396, (window.innerWidth - 54) / 2) + 36
   return window.innerWidth > 760
     ? { top: 84, right: 36, bottom: 72, left: desktopPanel }
@@ -64,8 +67,8 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
   const groups: Record<PhysicalFilter, string[]> = {
     relief: ['physical-europe-ranges', 'physical-ranges'],
     peaks: ['physical-europe-peaks', 'physical-peaks'],
-    hydrography: ['physical-europe-rivers', 'physical-europe-lakes', 'physical-rivers', 'physical-water'],
-    valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points'], protected: ['physical-protected'],
+    hydrography: ['physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-river-labels', 'physical-rivers', 'physical-water'],
+    valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts', 'physical-europe-marine-labels', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points'], protected: ['physical-protected'],
     hypsometry: ['physical-hypsometry'], terrain3d: [],
   }
   Object.entries(groups).forEach(([filter, layers]) => {
@@ -73,6 +76,10 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
       if (map.getLayer(layer)) map.setLayoutProperty(layer, 'visibility', filters.has(filter as PhysicalFilter) ? 'visible' : 'none')
     })
   })
+  if (map.getLayer('physical-europe-labels')) {
+    const kinds = [...filters].flatMap((filter) => PHYSICAL_FILTER_KINDS[filter]).filter((kind) => !['river', 'gulf', 'bay', 'delta'].includes(kind))
+    map.setFilter('physical-europe-labels', ['in', ['get', 'kind'], ['literal', kinds]] as FilterSpecification)
+  }
   if (map.getLayer('physical-river-labels')) map.setLayoutProperty('physical-river-labels', 'visibility', filters.has('hydrography') ? 'visible' : 'none')
   if (map.getLayer('physical-point-labels')) {
     const pointKinds = [
@@ -89,7 +96,7 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
     ]
     map.setFilter('physical-area-labels', ['in', ['get', 'kind'], ['literal', areaKinds]] as FilterSpecification)
   }
-  if (map.getSource('terrain-dem')) {
+  if (map.getLayer('hillshade') && map.getSource('terrain-dem')) {
     const terrainEnabled = filters.has('terrain3d')
     map.setTerrain(terrainEnabled ? { source: 'terrain-dem', exaggeration: 1.35 } : null)
     if (terrainEnabled && map.getPitch() < 20) map.easeTo({ pitch: 45, duration: 550 })
@@ -135,11 +142,16 @@ function applySelection(map: Map, mode: MapMode, selected: AtlasEntity | null, t
       if (map.getLayer(`${source}-selected`)) map.setFilter(`${source}-selected`, filter)
     })
   } else if (mode === 'physical') {
-    ;[
-      'physical-selected-point', 'physical-selected-line', 'physical-selected-fill',
-      'physical-europe-selected-point', 'physical-europe-selected-line', 'physical-europe-selected-fill',
-    ].forEach((layer) => {
-      if (map.getLayer(layer)) map.setFilter(layer, filter)
+    ;['physical', 'physical-europe'].forEach((prefix) => {
+      ;(['point', 'line', 'fill'] as const).forEach((suffix) => {
+        const layer = `${prefix}-selected-${suffix}`
+        const geometry = suffix === 'point' ? 'Point' : suffix === 'line' ? 'LineString' : 'Polygon'
+        if (map.getLayer(layer)) map.setFilter(layer, physicalSelectionFilter(selected?.id, geometry))
+      })
+      const riverLabel = `${prefix}-selected-river-label`
+      if (map.getLayer(riverLabel)) map.setFilter(riverLabel, physicalSelectionFilter(selected?.kind === 'river' ? selected.id : undefined, 'LineString'))
+      const normalLabel = `${prefix === 'physical' ? 'physical' : 'physical-europe'}-river-labels`
+      if (map.getLayer(normalLabel)) map.setFilter(normalLabel, ['all', ['==', ['get', 'kind'], 'river'], ['!=', ['get', 'id'], selected?.id || '__none__']])
     })
     if (map.getLayer('physical-related-peaks')) {
       map.setFilter('physical-related-peaks', ['in', ['get', 'id'], ['literal', relatedPhysicalIds]] as FilterSpecification)
@@ -167,16 +179,6 @@ function applyCompared(map: Map, entities: AtlasEntity[]) {
   })
 }
 
-function fitBounds(map: Map, bounds: [number, number, number, number], maxZoom = 13) {
-  if (Math.abs(bounds[2] - bounds[0]) < 1e-7 && Math.abs(bounds[3] - bounds[1]) < 1e-7) {
-    map.easeTo({ center: [bounds[0], bounds[1]], zoom: Math.max(map.getZoom(), maxZoom), duration: 700 })
-    return
-  }
-  map.fitBounds([[bounds[0], bounds[1]], [bounds[2], bounds[3]]], {
-    padding: 24, maxZoom, duration: 700,
-  })
-}
-
 function unionBounds(entities: AtlasEntity[]) {
   const bounds = entities.map(({ bbox }) => bbox).filter((value): value is [number, number, number, number] => Boolean(value))
   if (!bounds.length) return null
@@ -184,13 +186,6 @@ function unionBounds(entities: AtlasEntity[]) {
     Math.min(...bounds.map((item) => item[0])), Math.min(...bounds.map((item) => item[1])),
     Math.max(...bounds.map((item) => item[2])), Math.max(...bounds.map((item) => item[3])),
   ] as [number, number, number, number]
-}
-
-function focusCurrentSelection(map: Map, current: Props) {
-  if (current.selected?.bbox) fitBounds(map, current.selected.bbox)
-  else if (current.selected?.center) map.easeTo({ center: current.selected.center, zoom: Math.max(map.getZoom(), 10), duration: 700 })
-  else if (current.transitSelection?.bbox) fitBounds(map, current.transitSelection.bbox, current.transitSelection.type === 'stop' ? 15 : 13)
-  else if (current.transitSelection?.center) map.easeTo({ center: current.transitSelection.center, zoom: Math.max(map.getZoom(), 12), duration: 700 })
 }
 
 function applyUserLocation(map: Map, location: UserLocation | null) {
@@ -210,6 +205,8 @@ export default function MapView(props: Props) {
   const mapRef = useRef<Map | null>(null)
   const propsRef = useRef(props)
   const styleModeRef = useRef(props.mode)
+  const styleReadyRef = useRef(false)
+  const focusController = useRef(new SelectionFocusController())
   propsRef.current = props
   const comparedKey = props.compared.map(({ id }) => id).join(',')
 
@@ -226,6 +223,9 @@ export default function MapView(props: Props) {
     map.addControl(new AttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-right')
 
     let clickTimer: number | undefined
+    const riverTooltip = new Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'river-tooltip' })
+    const hideRiverTooltip = () => riverTooltip.remove()
+    map.getCanvas().addEventListener('mouseleave', hideRiverTooltip)
     const handleClick = (event: MapLayerMouseEvent) => {
       if (event.originalEvent.detail > 1) return
       window.clearTimeout(clickTimer)
@@ -262,7 +262,11 @@ export default function MapView(props: Props) {
     map.on('dblclick', handleDoubleClick)
     map.on('mousemove', (event) => {
       const layers = existingLayers(map, interactiveLayers(propsRef.current.mode))
-      map.getCanvas().style.cursor = map.queryRenderedFeatures(event.point, { layers }).length ? 'pointer' : ''
+      const features = map.queryRenderedFeatures(event.point, { layers })
+      map.getCanvas().style.cursor = features.length ? 'pointer' : ''
+      const river = propsRef.current.mode === 'physical' ? features.find((feature) => feature.properties?.kind === 'river') : null
+      if (river) riverTooltip.setLngLat(event.lngLat).setText(String(river.properties.name)).addTo(map)
+      else hideRiverTooltip()
     })
     map.on('moveend', () => {
       const center = map.getCenter()
@@ -270,16 +274,26 @@ export default function MapView(props: Props) {
     })
     const handleResize = () => map.setPadding(viewportPadding(propsRef.current.sheetLevel))
     window.addEventListener('resize', handleResize)
-    map.once('load', () => {
+    map.on('style.load', () => {
+      hideRiverTooltip()
+      styleReadyRef.current = true
       applyPhysicalFilters(map, propsRef.current.physicalFilters)
       applyPoliticalLevel(map, propsRef.current.politicalLevel)
       applyTransitFilters(map, propsRef.current.transitFilters)
       applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
       applyCompared(map, propsRef.current.compared)
       applyUserLocation(map, propsRef.current.locateRequest)
-      if (propsRef.current.focusRequestToken) focusCurrentSelection(map, propsRef.current)
+      focusController.current.apply(map, propsRef.current, true)
     })
-    return () => { window.clearTimeout(clickTimer); window.removeEventListener('resize', handleResize); mapRef.current = null; map.remove() }
+    return () => {
+      window.clearTimeout(clickTimer)
+      window.removeEventListener('resize', handleResize)
+      map.getCanvas().removeEventListener('mouseleave', hideRiverTooltip)
+      hideRiverTooltip()
+      styleReadyRef.current = false
+      mapRef.current = null
+      map.remove()
+    }
   }, [])
 
   useEffect(() => {
@@ -287,31 +301,23 @@ export default function MapView(props: Props) {
     if (!map) return
     if (styleModeRef.current === props.mode) return
     styleModeRef.current = props.mode
+    styleReadyRef.current = false
     map.setStyle(buildStyle(props.mode), { diff: false })
-    map.once('style.load', () => {
-      applyPhysicalFilters(map, propsRef.current.physicalFilters)
-      applyPoliticalLevel(map, propsRef.current.politicalLevel)
-      applyTransitFilters(map, propsRef.current.transitFilters)
-      applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
-      applyCompared(map, propsRef.current.compared)
-      applyUserLocation(map, propsRef.current.locateRequest)
-      if (propsRef.current.focusRequestToken) focusCurrentSelection(map, propsRef.current)
-    })
   }, [props.mode])
 
   useEffect(() => {
     const map = mapRef.current
-    if (map?.isStyleLoaded()) applyPhysicalFilters(map, props.physicalFilters)
+    if (map && styleReadyRef.current) applyPhysicalFilters(map, props.physicalFilters)
   }, [props.physicalFilters])
 
   useEffect(() => {
     const map = mapRef.current
-    if (map?.isStyleLoaded() && props.mode === 'transit') applyTransitFilters(map, props.transitFilters)
+    if (map && styleReadyRef.current && props.mode === 'transit') applyTransitFilters(map, props.transitFilters)
   }, [props.transitFilters, props.mode])
 
   useEffect(() => {
     const map = mapRef.current
-    if (map?.isStyleLoaded() && props.mode === 'political') applyPoliticalLevel(map, props.politicalLevel)
+    if (map && styleReadyRef.current && props.mode === 'political') applyPoliticalLevel(map, props.politicalLevel)
   }, [props.politicalLevel, props.mode])
 
   useEffect(() => {
@@ -370,29 +376,19 @@ export default function MapView(props: Props) {
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map?.isStyleLoaded()) return
+    if (!map || !styleReadyRef.current) return
     applySelection(map, props.mode, props.selected, props.transitSelection, props.relatedPhysicalIds)
-    if (props.selected) {
-      if (props.selected.bbox) {
-        fitBounds(map, props.selected.bbox)
-      } else if (props.selected.center) {
-        map.easeTo({ center: props.selected.center, zoom: Math.max(map.getZoom(), 10), duration: 700 })
-      }
-    } else if (props.transitSelection?.bbox) {
-      fitBounds(map, props.transitSelection.bbox, props.transitSelection.type === 'stop' ? 15 : 13)
-    } else if (props.transitSelection?.center) {
-      map.easeTo({ center: props.transitSelection.center, zoom: Math.max(map.getZoom(), 12), duration: 700 })
-    }
+    focusController.current.apply(map, propsRef.current, true)
   }, [props.selected, props.transitSelection, props.relatedPhysicalIds, props.mode, props.sheetLevel, props.focusRequestToken])
 
   useEffect(() => {
     const map = mapRef.current
     const bounds = unionBounds(props.compared)
-    if (!map?.isStyleLoaded()) return
+    if (!map || !styleReadyRef.current) return
     applyCompared(map, props.compared)
     if (bounds && props.compared.length > 1) {
       map.stop()
-      fitBounds(map, bounds, 12)
+      fitEntityBounds(map, bounds, 12)
     }
   }, [comparedKey, props.compared, props.sheetLevel])
 
@@ -400,7 +396,7 @@ export default function MapView(props: Props) {
     const map = mapRef.current
     const request = props.locateRequest
     if (!map || !request) return
-    if (map.isStyleLoaded()) applyUserLocation(map, request)
+    if (styleReadyRef.current) applyUserLocation(map, request)
     map.easeTo({ center: request.coordinates, zoom: 11, duration: 850 })
     if (props.mode !== 'political') return
     map.once('idle', () => {
