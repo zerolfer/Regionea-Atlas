@@ -7,6 +7,8 @@ npm ci
 npm run data:sync       # descarga territorio/físico y reconstruye todo lo derivado
 npm run data:publish    # refina/valida el snapshot ya presente; no descarga territorio
 npm run data:physical:sync # actualiza costa/contexto físico sin descargar territorio
+npm run data:physical:areas -- --water-zip data/physical-sources/masas-agua-supp2022-27.zip
+npm run data:physical:refine # reconstruye catálogo, aliases, etiquetas y checksums
 npm run data:content    # compila content/territories a editorial.json
 npm run data:validate   # valida snapshot sin descargar
 npm run data:import-gtfs -- --feed proveedor=/ruta/feed.zip
@@ -31,6 +33,8 @@ El manifiesto desplegado es la autoridad de atribución. El adaptador actual dec
 | `sadei-neighborhoods` | barrios de áreas urbanas | © SADEI; sujeto a su aviso legal |
 | `sitpa-functional-regions` | comarcas funcionales | CC BY 4.0 |
 | `sitpa-physical` | relieve, hidrografía y espacios protegidos | CC BY 4.0 |
+| `miteco-water-2027` | superficies de rías y bahías españolas | CC BY 4.0, atribución © Ministerio |
+| `icgc-life-ebro` | llanura deltaica y marismas del Ebro | CC BY 4.0 |
 
 El fondo tiene atribución independiente a OpenFreeMap, OpenMapTiles y OpenStreetMap; la elevación Terrarium, a Mapzen y AWS Open Data. Los GTFS se rigen por la licencia de cada publicación NAP. No copie la licencia de una colección a otra sin verificarla.
 
@@ -100,6 +104,17 @@ Después actualice las reglas específicas del validador, que hoy enumeran los c
 Para costa asturiana, `sync-physical-coast.mjs` clasifica códigos oficiales de Nombres Geográficos y añade la capa de playas de Turismo. La clasificación parte del código de capa y solo usa el nombre para separar tipos explícitos dentro del grupo que la propia fuente declara conjuntamente. Los rótulos completos pero ambiguos se conservan como `coast`, no se convierten por defecto en bahías. Los incompletos se omiten. Se pagina por `objectid` y se reutilizan IDs publicados aunque se corrija el tipo. El nombre visible de las playas incluye «Playa…» y mantiene el nombre original para búsquedas.
 
 El contexto costero usa las colecciones `ne_10m_geography_marine_polys` (bahías/golfos) y `ne_10m_geography_regions_polys` (deltas) de Natural Earth, filtradas a la caja contextual del atlas. No implica cobertura exhaustiva: por ejemplo, no se inventan polígonos de golfos o deltas ausentes de esas colecciones. La comprobación espacial excluye cajas que cruzan el antimeridiano, que de otro modo parecen intersectar Europa. Los códigos `ne_id`/`NE_ID` se conservan como identidad estable.
+
+### Superficies costeras españolas
+
+`sync-physical-areas.mjs` publica `physical/coastal-areas.geojson` y declara `physicalCoastalAreas` en el manifiesto. `refine-physical-snapshot.mjs` integra el catálogo y genera `physicalCoastalAreasLabels`. Ambas colecciones tienen fuentes propias; no se atribuyen a Natural Earth ni a SITPA.
+
+- **Rías y bahías:** descargue el ZIP «Masas de agua superficial (polígonos) PHC 2022–2027» desde [MITECO](https://www.miteco.gob.es/es/cartografia-y-sig/ide/descargas/agua/masas-de-agua-phc-2022-2027.html). La descarga puede exigir verificación humana: no se automatiza ese control. Guarde el ZIP en la ruta anterior, ignorada por Git. El importador exige SHP, DBF, PRJ y CPG, lee la codificación declarada, reproyecta desde el CRS del archivo a WGS84 y selecciona masas `Transición` cuyo nombre oficial comienza por ría, estuario o bahía. No convierte todas las masas en rías. La edición verificada es `2023-09-25`; una edición distinta exige revisar metadatos antes de actualizar el adaptador.
+- **Ebro:** [WMS LIFE EBRO del ICGC](https://www.icgc.cat/es/Geoinformacion-y-mapas/Servicios-en-linea-Geoservicios/WMS-Geoindex/WMS-Proyecto-Life-EBRO), capa `delta_enviro`. GetFeatureInfo devuelve GML, pero el servidor generaliza según la escala: una consulta amplia solo sirve como inventario de IDs y vértices oficiales. Para cada unidad elegida se hace una consulta de detalle centrada en su primer vértice (caja ±0,01 grados, 2048 píxeles), recuperando la geometría completa. Se exige identidad/unidad coincidente y al menos 50 vértices; nunca se publica la geometría gruesa como respaldo. No se vectorizan píxeles. El parser exige CRS 4326, IDs únicos, consulta no vacía/no truncada y anillos cerrados. Une exclusivamente QHpd (llanura deltaica) y QHm (marismas), preservando huecos; excluye QHfd/QHprd y otras unidades. La fecha documentada del servicio es febrero de 2021, no una fecha de levantamiento inventada. El área resultante **no es una cobertura geomorfológica completa del delta**: se declara expresamente en la ficha.
+
+El adaptador simplifica a 0,00003 grados y prepara todas las entradas antes de escribir. Si falta el ZIP en la ruta predeterminada, conserva las superficies MITECO del snapshot previo; un ZIP indicado explícitamente pero ausente, corrupto o inesperado aborta. Un fallo del ICGC también aborta antes de escribir. No despliegue un pipeline interrumpido: aún no hay transacción de promoción de todo el atlas.
+
+Tras `data:physical:areas`, ejecute `data:physical:refine`, `data:validate` y `npm test`. `data:physical:sync` ya los encadena; `data:publish` solo refina el snapshot y no necesita ZIP ni red. Para nuevas zonas, incorpore polígonos de una autoridad identificable y documente su significado, fecha y licencia. La selección automática del importador MITECO es nacional, no depende de Asturias. Los topónimos sin geometría válida siguen siendo etiquetas, nunca superficies aproximadas.
 
 Al añadir un tipo, actualice también `PHYSICAL_FILTER_KINDS` en `src/map/physical.ts`; controla qué filtros ofrece la interfaz según el catálogo. Las capas de selección se filtran por ID **y** tipo de geometría: círculos solo para puntos, trazos para líneas o contornos de polígonos. Nunca aplique un círculo a un polígono para representar su selección. Los ríos se etiquetan sobre la línea, no en el centro de su caja; la etiqueta de la selección sustituye a la normal para ese ID.
 

@@ -7,6 +7,10 @@ export const PHYSICAL_FILTER_KINDS: Record<PhysicalFilter, string[]> = {
   protected: ['protected-area'], hypsometry: [], terrain3d: [],
 }
 
+// These features denote surfaces, never point landmarks. A gazetteer position
+// may label one, but does not delimit it and must not acquire a circle marker.
+export const COASTAL_AREA_KINDS = ['bay', 'gulf', 'delta', 'estuary']
+
 export function availablePhysicalFilters(entities: AtlasEntity[], filters: PhysicalFilter[]) {
   const kinds = new Set(entities.map(({ kind }) => kind))
   return filters.filter((filter) => !PHYSICAL_FILTER_KINDS[filter].length || PHYSICAL_FILTER_KINDS[filter].some((kind) => kinds.has(kind as AtlasEntity['kind'])))
@@ -15,5 +19,7 @@ export function availablePhysicalFilters(entities: AtlasEntity[], filters: Physi
 // Circle layers otherwise draw a circle at every vertex of a selected polygon.
 // MapLibre's geometry-type expression also normalises Multi* geometries.
 export function physicalSelectionFilter(id: string | undefined, geometry: 'Point' | 'LineString' | 'Polygon'): FilterSpecification {
-  return ['all', ['==', ['get', 'id'], id || '__none__'], ['==', ['geometry-type'], geometry]]
+  const filter: FilterSpecification = ['all', ['==', ['get', 'id'], id || '__none__'], ['==', ['geometry-type'], geometry]]
+  if (geometry === 'Point') filter.push(['!', ['in', ['get', 'kind'], ['literal', COASTAL_AREA_KINDS]]])
+  return filter
 }

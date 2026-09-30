@@ -28,6 +28,8 @@ Los IDs publicados no cambian por traducciones, correcciones ortográficas o cam
 | Barrio | `es-as-neighborhood-{CodeB}` | SADEI |
 | Físico Asturias | `physical-as-{kind}-{capa}-{objectid/hash}` | SITPA |
 | Físico Europa | `physical-eu-{kind}-{ne_id/wikidata/hash}` | Natural Earth |
+| Masa de agua española | `physical-es-water-{CodMasa}` | MITECO/plan hidrológico |
+| Delta del Ebro | `physical-es-delta-ebro` | identidad fija, unidades ICGC LIFE EBRO |
 | Transporte | `{proveedor}:{id GTFS}` | feed GTFS |
 
 Para una cobertura nueva se recomienda `{país}-{ámbito}-{tipo}-{código-autoritativo}`. No reutilice un ID para una entidad distinta. Si una fuente sustituye sus códigos, publique un mapa de migración antes de cambiar URLs guardadas.
@@ -58,6 +60,10 @@ type AtlasEntity = {
   elevationM?: number | null
   lengthKm?: number | null
   territoryIds?: string[]
+  geometryRole?: 'area' | 'label' | 'line' | 'point'
+  geometryNote?: string
+  geometryId?: string
+  sourceDate?: string
 }
 ```
 
@@ -94,6 +100,18 @@ Tipos reconocidos: `peak`, `range`, `river`, `lake`, `reservoir`, `valley`, `coa
 El snapshot asturiano puebla picos, sierras, ríos, lagos, embalses, espacios protegidos, cabos, bahías, rías, islas y playas. El contexto Natural Earth incorpora golfos y deltas disponibles en su cobertura europea y mediterránea. Sus polígonos son áreas cartográficas de referencia para rótulos, no límites jurídicos, y llevan `boundaryStatus: 'reference'`. `cliff` y `valley` siguen preparados, pero solo se publican cuando una fuente los identifica de forma verificable. Añadir un tipo al contrato no autoriza a deducirlo de rótulos incompletos. `territoryIds` relaciona el accidente con territorios cuando la importación dispone de esa relación; actualmente el detalle asturiano usa `['es-as']` de forma general.
 
 Los nombres de playas se presentan con «Playa…», conservando el topónimo original en `localName` y `aliases`. Los IDs ya publicados no se regeneran al corregir nombres o tipos; que un ID opaco contenga un tipo antiguo no cambia el significado de `kind`.
+
+### Superficies y topónimos costeros
+
+`geometryRole` es obligatorio para los accidentes físicos publicados: `area` requiere Polygon/MultiPolygon, `line` describe un recorrido, `point` una localización y `label` un topónimo sin delimitación. Las colecciones de etiquetas derivadas llevan Point para dibujar el nombre, pero conservan el papel geométrico de la entidad original.
+
+Golfos, bahías, deltas y rías se dibujan y seleccionan como superficies cuando existe un polígono verificable. Un registro puntual de nomenclátor solo aporta una etiqueta y su ficha advierte que no delimita el accidente. No se permiten círculos, buffers ni polígonos inventados como sustitutos.
+
+`geometryNote` explica el alcance de la superficie; `sourceDate` es la actualización conocida de la fuente (ISO `YYYY-MM` o `YYYY-MM-DD`, sin inventar precisión). Es independiente de `manifest.generatedAt`, que fecha la generación de la colección. MITECO delimita masas de agua de transición, no todo el paisaje de una ría. El Ebro delimita las unidades de llanura deltaica y marismas QHpd/QHm del ICGC, no todo el delta geomorfológico ni el parque natural.
+
+`geometryId` conserva IDs antiguos de topónimos al dirigir selección y encuadre hacia una superficie canónica del catálogo. Debe resolver a una entidad `area` sin otra referencia: no se permiten cadenas. El catálogo antiguo adopta bbox, fuente, fecha y nota de esa superficie; el importador conserva su nombre como alias en la entidad canónica. La búsqueda excluye duplicados con `geometryId`, pero las URLs antiguas siguen funcionando. La asociación exige mismo tipo, nombre normalizado, proximidad y una sola coincidencia; una ambigüedad no se resuelve automáticamente.
+
+Excepción explícita de normalización: un eje hidrográfico clasificado como río y denominado oficialmente «Ría…» o «Estuario…» puede adoptar el tipo de la superficie MITECO coincidente bajo las mismas comprobaciones. No basta con desembocar en una ría. El eje enlazado deja de dibujarse como accidente independiente, pero su ID permanece resoluble.
 
 ## Manifiesto principal
 

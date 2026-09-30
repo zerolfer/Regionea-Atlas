@@ -59,9 +59,11 @@ Las relaciones de ascendencia se recorren con `parentId`. El comparador admite h
 
 ### Físico
 
-Hay una colección de contexto europeo y una de detalle asturiano, además de colecciones derivadas de etiquetas. Los filtros de contenido son relieve, picos, hidrografía, valles, costa y espacios protegidos. La hipsometría y el terreno 3D son visualizaciones opcionales, desactivadas por defecto y persistidas en la URL. Sombreado, hipsometría y terreno usan instancias DEM separadas para evitar degradar el renderizado.
+Hay una colección de contexto europeo, una de detalle asturiano y una de superficies costeras españolas, además de colecciones derivadas de etiquetas. Los filtros de contenido son relieve, picos, hidrografía, valles, costa y espacios protegidos. La hipsometría y el terreno 3D son visualizaciones opcionales, desactivadas por defecto y persistidas en la URL. Sombreado, hipsometría y terreno usan instancias DEM separadas para evitar degradar el renderizado.
 
 `scripts/sync-physical-coast.mjs` enriquece el detalle con rías, islas, cabos, bahías y playas oficiales de SITPA. Los símbolos costeros aparecen progresivamente para no saturar escalas regionales.
+
+`scripts/sync-physical-areas.mjs` incorpora superficies de masas de agua MITECO y unidades deltaicas del Ebro del ICGC. Golfos, bahías, rías y deltas se seleccionan como áreas, no mediante marcadores puntuales. El refinado vincula topónimos/ejes antiguos a superficies canónicas cuando hay una coincidencia inequívoca, conserva sus URLs y deduplica búsqueda y etiquetas. Las fichas distinguen la fecha de fuente y el alcance del polígono; consulte los contratos y la guía de ampliación antes de incorporar otra colección.
 
 La relación entre una sierra seleccionada y sus picos se calcula actualmente en el cliente por proximidad al centro, no mediante una relación persistida. Es una heurística de interfaz y no un vínculo de datos normativo.
 

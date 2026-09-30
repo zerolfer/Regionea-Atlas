@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { beachDisplayName } from './sync-physical-coast.mjs'
+import { geometryRole, matchingCoastalArea } from './lib/coastal-areas.mjs'
 
 const ROOT = process.cwd()
 const ATLAS = path.join(ROOT, 'public', 'data', 'atlas')
@@ -57,8 +58,8 @@ function labelCollection(features, include) {
   }
 }
 
-const [asturias, europe, catalog, manifest] = await Promise.all([
-  read('physical/asturias.geojson'), read('physical/europe.geojson'), read('catalog.json'), read('manifest.json'),
+const [asturias, europe, coastalAreas, catalog, manifest] = await Promise.all([
+  read('physical/asturias.geojson'), read('physical/europe.geojson'), read('physical/coastal-areas.geojson'), read('catalog.json'), read('manifest.json'),
 ])
 
 const seenRanges = new Set()
@@ -77,19 +78,43 @@ asturias.features = asturias.features.filter((feature) => {
   return true
 })
 
-const asturiasLabels = labelCollection(asturias.features, (feature) => feature.properties.kind !== 'river')
+for (const feature of [...asturias.features, ...europe.features, ...coastalAreas.features]) {
+  feature.properties.geometryRole = geometryRole(feature)
+  const area = matchingCoastalArea(feature, coastalAreas.features)
+  if (area) {
+    feature.properties.geometryId = area.id
+    feature.properties.kind = area.properties.kind
+    area.properties.aliases = [...new Set([...area.properties.aliases, feature.properties.name,
+      feature.properties.localName, ...(feature.properties.aliases || [])])].filter((name) => name && name !== area.properties.name)
+  }
+  else delete feature.properties.geometryId
+}
+const asturiasLabels = labelCollection(asturias.features, (feature) => feature.properties.kind !== 'river' && !feature.properties.geometryId)
 const europeLabels = labelCollection(europe.features, (feature) => feature.properties.kind !== 'river')
-catalog.physical = [...europe.features, ...asturias.features].map((feature) => ({ ...feature.properties }))
+const coastalLabels = labelCollection(coastalAreas.features, () => true)
+const areasById = new Map(coastalAreas.features.map((feature) => [feature.id, feature]))
+catalog.physical = [...europe.features, ...asturias.features, ...coastalAreas.features].map((feature) => {
+  const area = areasById.get(feature.properties.geometryId)
+  if (!area) return { ...feature.properties }
+  // Keep every published gazetteer ID usable in shared URLs, while directing
+  // selection/camera to the canonical named water surface. No duplicate search results.
+  return { ...area.properties, id: feature.id, slug: feature.properties.slug, name: feature.properties.name,
+    localName: feature.properties.localName, aliases: feature.properties.aliases, geometryId: area.id }
+})
 
 const asturiasFile = await write('physical/asturias.geojson', asturias)
 const europeFile = await write('physical/europe.geojson', europe)
+const coastalFile = await write('physical/coastal-areas.geojson', coastalAreas)
+const coastalLabelsFile = await write('physical/labels-coastal-areas.geojson', coastalLabels)
 const asturiasLabelsFile = await write('physical/labels-asturias.geojson', asturiasLabels)
 const europeLabelsFile = await write('physical/labels-europe.geojson', europeLabels)
 const catalogFile = await write('catalog.json', catalog)
 
 Object.assign(manifest.collections.physicalAsturias, asturiasFile, { count: asturias.features.length, bounds: bounds(asturias.features) })
 Object.assign(manifest.collections.physicalEurope, europeFile, { count: europe.features.length, bounds: bounds(europe.features) })
+Object.assign(manifest.collections.physicalCoastalAreas, coastalFile)
 Object.assign(manifest.collections.catalog, catalogFile, { count: catalog.territories.length + catalog.physical.length })
+manifest.collections.catalog.sourceIds = [...new Set(catalog.physical.map(({ sourceId }) => sourceId).concat(manifest.collections.catalog.sourceIds))]
 manifest.collections.physicalAsturiasLabels = {
   url: '/data/atlas/physical/labels-asturias.geojson', ...asturiasLabelsFile, count: asturiasLabels.features.length,
   sourceIds: ['sitpa-physical'], license: 'CC BY 4.0', bounds: bounds(asturiasLabels.features), minZoom: 7.5, maxZoom: 24,
@@ -97,6 +122,10 @@ manifest.collections.physicalAsturiasLabels = {
 manifest.collections.physicalEuropeLabels = {
   url: '/data/atlas/physical/labels-europe.geojson', ...europeLabelsFile, count: europeLabels.features.length,
   sourceIds: ['natural-earth'], license: 'Public domain', bounds: bounds(europeLabels.features), minZoom: 2, maxZoom: 24,
+}
+manifest.collections.physicalCoastalAreasLabels = {
+  url: '/data/atlas/physical/labels-coastal-areas.geojson', ...coastalLabelsFile, count: coastalLabels.features.length,
+  sourceIds: manifest.collections.physicalCoastalAreas.sourceIds, license: 'CC BY 4.0', bounds: bounds(coastalLabels.features), minZoom: 5, maxZoom: 24,
 }
 manifest.version = new Date().toISOString().slice(0, 10)
 manifest.generatedAt = new Date().toISOString()

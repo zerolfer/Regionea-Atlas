@@ -38,3 +38,18 @@ it('etiqueta ríos a escala regional y refuerza el nombre del río seleccionado'
   expect(style.layers.some(({ id }) => id === 'physical-selected-river-label')).toBe(true)
   expect(style.layers.some(({ id }) => id === 'physical-europe-marine-labels')).toBe(true)
 })
+
+it('no representa golfos, bahías, deltas ni rías mediante marcadores puntuales', () => {
+  const style = buildStyle('physical')
+  const pointLayer = style.layers.find(({ id }) => id === 'physical-coast-points')!
+  const normal = featureFilter('filter' in pointLayer ? pointLayer.filter : undefined, 'layers[0].filter').filter
+  const selected = featureFilter(physicalSelectionFilter('selected', 'Point'), 'layers[0].filter').filter
+  for (const kind of ['gulf', 'bay', 'delta', 'estuary']) {
+    const feature = { type: 'Point' as const, properties: { id: 'selected', kind } }
+    expect(normal({ zoom: 12 }, feature)).toBe(false)
+    expect(selected({ zoom: 12 }, feature)).toBe(false)
+  }
+  const gulf = style.layers.find(({ id }) => id === 'physical-europe-coasts')!
+  expect(gulf.maxzoom).toBeUndefined()
+  expect(style.layers.some(({ id, type }) => id === 'physical-coastal-selected-area' && type === 'fill')).toBe(true)
+})

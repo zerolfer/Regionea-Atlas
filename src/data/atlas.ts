@@ -32,6 +32,7 @@ export function searchEntities(entities: AtlasEntity[], query: string, limit = 1
   const normalizedQuery = normalizeSearch(query.trim())
   if (normalizedQuery.length < 2) return []
   return entities
+    .filter((entity) => !entity.geometryId)
     .map((entity) => {
       const names = [entity.name, entity.localName, ...entity.aliases].filter(Boolean).map((name) => normalizeSearch(String(name)))
       const exact = names.some((name) => name === normalizedQuery)

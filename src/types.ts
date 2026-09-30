@@ -59,6 +59,10 @@ export type AtlasEntity = {
   elevationM?: number | null
   lengthKm?: number | null
   territoryIds?: string[]
+  geometryRole?: 'area' | 'label' | 'line' | 'point'
+  geometryNote?: string
+  geometryId?: string
+  sourceDate?: string
 }
 
 export type DatasetCollection = {

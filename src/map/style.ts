@@ -118,6 +118,17 @@ function silentBaseLayers(): LayerSpecification[] {
 function physicalLayers(): LayerSpecification[] {
   return [
     {
+      id: 'physical-coastal-areas', type: 'fill', source: 'physical-coastal', minzoom: 5,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      paint: { 'fill-color': '#68a7af', 'fill-opacity': 0.26, 'fill-outline-color': '#397984' },
+    },
+    {
+      id: 'physical-coastal-labels', type: 'symbol', source: 'physical-coastal-labels', minzoom: 5.5,
+      layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12,
+        'text-max-width': 12, 'text-padding': 5, 'text-allow-overlap': false },
+      paint: { 'text-color': '#285f68', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.5 },
+    },
+    {
       id: 'physical-europe-rivers', type: 'line', source: 'physical-europe', minzoom: 2, maxzoom: 9,
       filter: ['==', ['get', 'kind'], 'river'],
       paint: { 'line-color': '#5d91a5', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.6, 8, 1.8], 'line-opacity': 0.8 },
@@ -137,7 +148,7 @@ function physicalLayers(): LayerSpecification[] {
       paint: { 'fill-color': '#c8aa70', 'fill-opacity': 0.24, 'fill-outline-color': '#9b7744' },
     },
     {
-      id: 'physical-europe-coasts', type: 'fill', source: 'physical-europe', minzoom: 3, maxzoom: 9,
+      id: 'physical-europe-coasts', type: 'fill', source: 'physical-europe', minzoom: 3,
       filter: ['in', ['get', 'kind'], ['literal', ['coast', 'bay', 'gulf', 'delta']]],
       paint: { 'fill-color': '#68a7af', 'fill-opacity': 0.2, 'fill-outline-color': '#397984' },
     },
@@ -191,17 +202,17 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-coast-areas', type: 'fill', source: 'physical-asturias', minzoom: 8,
-      filter: ['in', ['get', 'kind'], ['literal', ['bay', 'gulf', 'estuary', 'beach', 'island']]],
+      filter: ['all', ['==', ['geometry-type'], 'Polygon'], ['in', ['get', 'kind'], ['literal', ['bay', 'gulf', 'delta', 'estuary', 'beach', 'island']]]],
       paint: { 'fill-color': '#67a3ad', 'fill-opacity': 0.22, 'fill-outline-color': '#397984' },
     },
     {
       id: 'physical-coast-lines', type: 'line', source: 'physical-asturias', minzoom: 8,
-      filter: ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      filter: ['all', ['!', ['has', 'geometryId']], ['==', ['geometry-type'], 'LineString'], ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]]],
       paint: { 'line-color': '#397984', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 2.4], 'line-opacity': 0.82 },
     },
     {
       id: 'physical-coast-points', type: 'circle', source: 'physical-asturias', minzoom: 11.5,
-      filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'bay', 'gulf', 'delta', 'estuary', 'cliff', 'beach', 'island']]]],
+      filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'cliff', 'beach', 'island']]]],
       paint: { 'circle-color': '#397984', 'circle-radius': 3.5, 'circle-stroke-color': '#f6f1e7', 'circle-stroke-width': 1 },
     },
     {
@@ -251,6 +262,16 @@ function physicalLayers(): LayerSpecification[] {
         'text-max-width': 10, 'text-padding': 12, 'text-allow-overlap': false,
       },
       paint: { 'text-color': '#2e2924', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
+    },
+    ...['physical', 'physical-europe', 'physical-coastal'].map((prefix) => ({
+      id: `${prefix}-selected-area`, type: 'fill' as const,
+      source: prefix === 'physical' ? 'physical-asturias' : prefix, minzoom: 0,
+      filter: physicalSelectionFilter(undefined, 'Polygon'),
+      paint: { 'fill-color': '#e45c37', 'fill-opacity': 0.22 },
+    })),
+    {
+      id: 'physical-coastal-selected-fill', type: 'line', source: 'physical-coastal', minzoom: 0,
+      filter: physicalSelectionFilter(undefined, 'Polygon'), paint: { 'line-color': '#e45c37', 'line-width': 3 },
     },
     {
       id: 'physical-selected-point', type: 'circle', source: 'physical-asturias', minzoom: 0,
@@ -420,6 +441,8 @@ export function buildStyle(mode: MapMode): StyleSpecification {
     sources['physical-asturias'] = { type: 'geojson', data: '/data/atlas/physical/asturias.geojson' }
     sources['physical-europe-labels'] = { type: 'geojson', data: '/data/atlas/physical/labels-europe.geojson' }
     sources['physical-asturias-labels'] = { type: 'geojson', data: '/data/atlas/physical/labels-asturias.geojson' }
+    sources['physical-coastal'] = { type: 'geojson', data: '/data/atlas/physical/coastal-areas.geojson' }
+    sources['physical-coastal-labels'] = { type: 'geojson', data: '/data/atlas/physical/labels-coastal-areas.geojson' }
     layers.push(...contextTerritoryLayers(), ...physicalLayers())
   }
   if (mode === 'transit') {
@@ -445,8 +468,9 @@ export function buildStyle(mode: MapMode): StyleSpecification {
 
 export const POLITICAL_INTERACTIVE_LAYERS = POLITICAL_LEVEL_RANGES.flatMap(({ source }) => [`${source}-hit`, `${source}-labels`])
 export const PHYSICAL_INTERACTIVE_LAYERS = [
-  'physical-selected-point', 'physical-selected-line', 'physical-selected-fill',
-  'physical-europe-selected-point', 'physical-europe-selected-line', 'physical-europe-selected-fill',
+  'physical-coastal-areas', 'physical-coastal-labels', 'physical-coastal-selected-area', 'physical-coastal-selected-fill',
+  'physical-selected-point', 'physical-selected-line', 'physical-selected-fill', 'physical-selected-area',
+  'physical-europe-selected-point', 'physical-europe-selected-line', 'physical-europe-selected-fill', 'physical-europe-selected-area',
   'physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-ranges', 'physical-europe-valleys',
   'physical-europe-coasts', 'physical-europe-peaks', 'physical-europe-labels',
   'physical-europe-marine-labels', 'physical-europe-river-labels',
