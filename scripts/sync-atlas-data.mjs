@@ -763,7 +763,7 @@ export function naturalPhysical(feature, kind, extras = {}) {
 const isDirectRun = process.argv[1]
   && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 
-export { fetchJson }
+export { fetchJson, simplifyGeometry }
 
 if (isDirectRun) {
   main().catch((error) => {

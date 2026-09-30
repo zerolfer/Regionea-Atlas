@@ -52,7 +52,7 @@ npm test
 npm run build
 ```
 
-`npm test` ejecuta Vitest, la comprobación autocontenida del clasificador y el validador completo del snapshot. `npm run build` ejecuta TypeScript y Vite/PWA.
+`npm test` ejecuta Vitest, las comprobaciones autocontenidas de clasificación y superficies costeras (GML, huecos, CRS, identidad, reproyección y ZIP inválido), y el validador completo del snapshot. Estas pruebas no descargan fuentes externas. `npm run build` ejecuta TypeScript y Vite/PWA.
 
 Para cambios de datos use además:
 

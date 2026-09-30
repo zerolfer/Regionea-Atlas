@@ -28,6 +28,16 @@ const source: SourceReference = {
 }
 
 describe('EntityPanel', () => {
+  it('indica la fecha de la fuente sin inventar un día si solo se conoce el mes', () => {
+    render(<EntityPanel entity={{ ...parish, kind: 'delta', geometryRole: 'area', geometryNote: 'Área sedimentaria de referencia.', sourceDate: '2021-02' }} source={source} ancestors={[]} compared={false} onCompare={vi.fn()} onNavigate={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByText('Área sedimentaria de referencia.')).toBeInTheDocument()
+    expect(screen.getByText(/Fuente feb 2021/)).toBeInTheDocument()
+  })
+  it('distingue un topónimo costero de una delimitación de superficie', () => {
+    render(<EntityPanel entity={{ ...parish, kind: 'bay', geometryRole: 'label', boundaryStatus: 'reference' }} ancestors={[]} compared={false} onCompare={vi.fn()} onNavigate={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByText('Topónimo sin superficie delimitada.')).toBeInTheDocument()
+    expect(screen.getByText(/no los límites del accidente/)).toBeInTheDocument()
+  })
   it('shows a complete territorial record and the statistical-boundary warning', () => {
     render(<EntityPanel entity={parish} source={source} datasetDate="2026-09-27T10:00:00.000Z" ancestors={[]} compared={false} onCompare={vi.fn()} onNavigate={vi.fn()} onClose={vi.fn()} />)
 

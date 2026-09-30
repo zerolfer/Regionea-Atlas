@@ -22,7 +22,8 @@ function formatNumber(value: number | null | undefined, maximumFractionDigits = 
 function formatDatasetDate(value?: string) {
   if (!value) return null
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' }).format(date)
+  return Number.isNaN(date.getTime()) ? null : new Intl.DateTimeFormat('es-ES', /^\d{4}-\d{2}$/.test(value)
+    ? { month: 'short', year: 'numeric' } : { dateStyle: 'medium' }).format(date)
 }
 
 export default function EntityPanel({ entity, editorial, source, datasetDate, parent, ancestors, related = [], compared, onCompare, onNavigate, onClose }: Props) {
@@ -31,6 +32,7 @@ export default function EntityPanel({ entity, editorial, source, datasetDate, pa
   const hasMetrics = entity.population != null || entity.areaKm2 != null || entity.density != null || entity.elevationM != null || entity.lengthKm != null
   const boundaryLabel = entity.boundaryStatus ? BOUNDARY_STATUS_LABELS[entity.boundaryStatus] : null
   const formattedDatasetDate = formatDatasetDate(datasetDate)
+  const formattedSourceDate = formatDatasetDate(entity.sourceDate)
   return (
     <article className="entity-panel">
       <div className="panel-kicker-row">
@@ -42,6 +44,8 @@ export default function EntityPanel({ entity, editorial, source, datasetDate, pa
       {ancestors.length > 0 && <nav className="territory-path" aria-label="Ruta territorial">{ancestors.map((ancestor) => <button key={ancestor.id} onClick={() => onNavigate(ancestor)}>{ancestor.name}</button>)}<span>{entity.name}</span></nav>}
       {parent && ancestors.length === 0 && <p className="parent-line">Forma parte de {parent.name}</p>}
       {boundaryLabel && <p className={`boundary-status boundary-${entity.boundaryStatus}`}>{boundaryLabel}</p>}
+      {entity.geometryRole === 'label' && <div className="boundary-note"><strong>Topónimo sin superficie delimitada.</strong> La fuente solo aporta una posición para el nombre, no los límites del accidente.</div>}
+      {entity.geometryNote && <p className="boundary-note">{entity.geometryNote}</p>}
       {editorial?.summary && <p className="standfirst">{editorial.summary}</p>}
       {entity.boundaryStatus === 'statistical' && <div className="boundary-note"><strong>Límite estadístico.</strong> No constituye un deslinde jurídico oficial.</div>}
       {(isTerritory || hasMetrics) && (
@@ -75,7 +79,7 @@ export default function EntityPanel({ entity, editorial, source, datasetDate, pa
         <footer className="source-line">
           <span>Fuente</span>
           <a href={source.url} target="_blank" rel="noreferrer">{source.title}</a>
-          <small>{source.license}{entity.referenceYear ? ` · Datos ${entity.referenceYear}` : ''}{formattedDatasetDate ? ` · Colección ${formattedDatasetDate}` : ''}</small>
+          <small>{source.license}{formattedSourceDate ? ` · Fuente ${formattedSourceDate}` : entity.referenceYear ? ` · Datos ${entity.referenceYear}` : ''}{formattedDatasetDate ? ` · Colección ${formattedDatasetDate}` : ''}</small>
         </footer>
       )}
     </article>

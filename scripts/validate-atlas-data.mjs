@@ -71,6 +71,20 @@ for (const [name, collection] of Object.entries(manifest.collections)) {
     assert(geojson.features.length === collection.count, `${name}: recuento incorrecto`)
     const collectionIds = name === 'territoryLabels' || name.endsWith('Labels') ? new Set() : ids
     geojson.features.forEach((feature) => validateFeature(feature, collectionIds, sourceIds, name))
+    if (name.startsWith('physical') && !name.endsWith('Labels')) {
+      for (const feature of geojson.features) {
+        const p = feature.properties, polygon = ['Polygon', 'MultiPolygon'].includes(feature.geometry.type)
+        assert(['area', 'line', 'point', 'label'].includes(p.geometryRole), `${p.id}: falta papel geométrico`)
+        assert(p.geometryRole !== 'area' || polygon, `${p.id}: una superficie no puede ser un punto`)
+        if (['bay', 'gulf', 'delta', 'estuary'].includes(p.kind) && feature.geometry.type === 'Point') {
+          assert(p.geometryRole === 'label', `${p.id}: un topónimo costero no delimita una superficie`)
+        }
+        if (polygon) {
+          const rings = feature.geometry.coordinates.flat(feature.geometry.type === 'MultiPolygon' ? 1 : 0)
+          for (const ring of rings) assert(ring.length >= 4 && ring[0].join() === ring.at(-1).join(), `${p.id}: anillo abierto o degenerado`)
+        }
+      }
+    }
   }
 }
 
@@ -101,6 +115,18 @@ for (const name of territorialCollections) assert(manifest.collections[name], `F
 
 const physicalKinds = new Set(['peak', 'range', 'river', 'lake', 'reservoir', 'valley', 'coast', 'cape', 'bay', 'gulf', 'delta', 'estuary', 'cliff', 'beach', 'island', 'protected-area'])
 for (const entity of catalog.physical) {
+  if (entity.sourceDate) {
+    assert(/^\d{4}-\d{2}(-\d{2})?$/.test(entity.sourceDate) && !Number.isNaN(Date.parse(entity.sourceDate))
+      && new Date(entity.sourceDate).toISOString().startsWith(entity.sourceDate), `${entity.id}: fecha de fuente inválida`)
+  }
+  if (['miteco-water-2027', 'icgc-life-ebro'].includes(entity.sourceId)) {
+    assert(entity.geometryRole === 'area' && entity.boundaryStatus === 'reference' && entity.sourceDate
+      && entity.geometryNote?.trim(), `${entity.id}: superficie costera sin fecha o alcance documentado`)
+  }
+  if (entity.geometryId) {
+    const area = catalog.physical.find(({ id }) => id === entity.geometryId)
+    assert(area?.geometryRole === 'area' && !area.geometryId, `${entity.id}: referencia a superficie rota o encadenada`)
+  }
   assert(physicalKinds.has(entity.kind), `${entity.id}: tipo físico desconocido`)
   // SITPA publishes unnamed water bodies too. Keep their verified geometries;
   // do not fabricate a placename just to satisfy the catalogue.
@@ -108,6 +134,8 @@ for (const entity of catalog.physical) {
   assert(ids.has(entity.id), `${entity.id}: accidente sin geometría`)
   if (entity.kind === 'beach') assert(/^playa(s)?\b/i.test(entity.name), `${entity.id}: playa sin prefijo identificativo`)
 }
+assert(manifest.collections.physicalCoastalAreas && manifest.collections.physicalCoastalAreasLabels, 'Faltan superficies costeras o sus etiquetas')
+assert(catalog.physical.some(({ id, kind, geometryRole }) => id === 'physical-es-delta-ebro' && kind === 'delta' && geometryRole === 'area'), 'Falta la superficie del delta del Ebro')
 for (const name of ['physicalAsturiasLabels', 'physicalEuropeLabels']) {
   const collection = manifest.collections[name]
   if (!collection) continue
