@@ -139,17 +139,4 @@ El nombre del fichero no manda; manda `id` en frontmatter. Debe coincidir exacta
 
 ## Problemas y deuda conocidos
 
-1. El pipeline territorial/físico es específico de Asturias y no está dividido en adaptadores configurables.
-2. Las colecciones son monolíticas; no hay carga por concejo/ciudad ni resolución de colecciones desde el manifiesto.
-3. El cron GTFS solo archiva originales; no normaliza, valida ni promociona un snapshot.
-4. El “último realtime válido” vive en memoria de una instancia, no en almacenamiento compartido.
-5. La selección de transporte no se restaura desde la URL.
-6. El validador contiene recuentos y padres asturianos fijos; una cobertura nueva exige generalizarlo.
-7. `MetricValue` y los tipos territorial histórico/cultural están reservados, no implementados de extremo a extremo.
-8. Las relaciones sierra-pico se infieren en cliente por proximidad.
-9. El bundle de MapLibre es grande; solo se ha aislado mediante carga perezosa, no se ha optimizado más.
-10. Docker/Task tienen discrepancias de versión de Node y puerto documentadas arriba.
-11. No hay E2E, regresión visual ni auditoría de accesibilidad automatizadas.
-12. El importador actual escribe o reemplaza salidas presentes, pero no elimina ficheros por parada que hayan desaparecido del feed nuevo.
-
-Estas limitaciones no deben ocultarse con lógica de respaldo en el navegador. Al resolver una, añada la garantía correspondiente al validador o a pruebas automatizadas.
+La lista única de trabajo futuro y la decisión pendiente sobre la arquitectura de datos se mantienen en [Pendientes y decisiones abiertas](pendientes.md). El backend se ha pospuesto deliberadamente; PostGIS figura allí como opción de estudio, no como solución aprobada.
