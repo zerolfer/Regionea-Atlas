@@ -324,7 +324,7 @@ function boundsForFeatures(features) {
   return bounds.every(Number.isFinite) ? bounds.map((value) => Math.round(value * 1e5) / 1e5) : null
 }
 
-function inEurope(feature) {
+export function inEurope(feature) {
   const bbox = boundsForGeometry(feature.geometry)
   if (!bbox) return false
   return !(bbox[2] < EUROPE_BOUNDS[0] || bbox[0] > EUROPE_BOUNDS[2] || bbox[3] < EUROPE_BOUNDS[1] || bbox[1] > EUROPE_BOUNDS[3])
@@ -741,7 +741,7 @@ function physicalFeature(feature, kind, name, extras = {}, tolerance = 0, namesp
   }, tolerance)
 }
 
-function naturalPhysical(feature, kind, extras = {}) {
+export function naturalPhysical(feature, kind, extras = {}) {
   const name = feature.properties.name_es || feature.properties.NAME_ES || feature.properties.name || feature.properties.NAME
   const id = feature.properties.ne_id || feature.properties.wikidataid || createHash('sha1')
     .update(JSON.stringify([name, boundsForGeometry(feature.geometry)]))
@@ -762,6 +762,8 @@ function naturalPhysical(feature, kind, extras = {}) {
 
 const isDirectRun = process.argv[1]
   && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
+
+export { fetchJson }
 
 if (isDirectRun) {
   main().catch((error) => {

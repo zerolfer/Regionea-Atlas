@@ -13,6 +13,7 @@ import type { AtlasData } from './data/atlas'
 import { loadTransitCatalog } from './data/transit'
 import type { TransitCatalog } from './data/transit'
 import { ALL_PHYSICAL_FILTERS, DEFAULT_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
+import { availablePhysicalFilters } from './map/physical'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, SearchItem, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from './types'
 
 const MapView = lazy(() => import('./map/MapView'))
@@ -129,6 +130,7 @@ export default function App() {
   }, [])
 
   const selected = selectedId ? atlas?.entitiesById.get(selectedId) || null : null
+  const visiblePhysicalFilters = useMemo(() => availablePhysicalFilters(atlas?.physical || [], ALL_PHYSICAL_FILTERS), [atlas])
   const compared = useMemo(
     () => compareIds.map((id) => atlas?.entitiesById.get(id)).filter((entity): entity is AtlasEntity => Boolean(entity)),
     [atlas, compareIds],
@@ -259,7 +261,7 @@ export default function App() {
     if (isPhysicalEntity(entity) && mode !== 'physical') setModeState('physical')
     if (!isPhysicalEntity(entity) && mode !== 'political') setModeState('political')
     setSelectedId(entity.id)
-    if (focus) setFocusRequestToken(Date.now())
+    if (focus) setFocusRequestToken((token) => token + 1)
   }
 
   function selectSearchItem(item: SearchItem) {
@@ -270,7 +272,7 @@ export default function App() {
       setSelectedId(null)
       setContextIds([])
       setTransitSelection(item.transitSelection)
-      setFocusRequestToken(Date.now())
+      setFocusRequestToken((token) => token + 1)
     }
   }
 
@@ -457,7 +459,7 @@ export default function App() {
         <footer className="panel-footer"><button onClick={() => setSourcesOpen(true)}>Fuentes y licencias</button><span>{atlas ? `Datos ${atlas.manifest.version}` : 'Cargando datos…'}</span></footer>
       </aside>
 
-      {mode === 'physical' && <div className="filter-bar" aria-label="Filtros del mapa físico">{ALL_PHYSICAL_FILTERS.map((filter) => <button key={filter} className={physicalFilters.has(filter) ? 'active' : ''} aria-pressed={physicalFilters.has(filter)} onClick={() => toggleFilter(filter)}>{FILTER_LABELS[filter]}</button>)}</div>}
+      {mode === 'physical' && <div className="filter-bar" aria-label="Filtros del mapa físico">{visiblePhysicalFilters.map((filter) => <button key={filter} className={physicalFilters.has(filter) ? 'active' : ''} aria-pressed={physicalFilters.has(filter)} onClick={() => toggleFilter(filter)}>{FILTER_LABELS[filter]}</button>)}</div>}
       {mode === 'political' && <div className="filter-bar level-bar" aria-label="Nivel territorial">{(Object.keys(POLITICAL_LEVEL_LABELS) as PoliticalLevel[]).map((level) => <button key={level} className={politicalLevel === level ? 'active' : ''} aria-pressed={politicalLevel === level} onClick={() => setPoliticalLevel(level)}>{POLITICAL_LEVEL_LABELS[level]}</button>)}</div>}
       {mode === 'transit' && <div className="filter-bar transit-filter-bar" aria-label="Filtros de transporte">
         {transitCatalog.modes.map((transportMode) => <button key={transportMode} className={transitFilters.modes.has(transportMode) ? 'active' : ''} aria-pressed={transitFilters.modes.has(transportMode)} onClick={() => toggleTransitMode(transportMode)}>{TRANSIT_MODE_LABELS[transportMode]}</button>)}

@@ -99,6 +99,22 @@ for (const entity of catalog.territories) {
 
 for (const name of territorialCollections) assert(manifest.collections[name], `Falta colección territorial ${name}`)
 
+const physicalKinds = new Set(['peak', 'range', 'river', 'lake', 'reservoir', 'valley', 'coast', 'cape', 'bay', 'gulf', 'delta', 'estuary', 'cliff', 'beach', 'island', 'protected-area'])
+for (const entity of catalog.physical) {
+  assert(physicalKinds.has(entity.kind), `${entity.id}: tipo físico desconocido`)
+  // SITPA publishes unnamed water bodies too. Keep their verified geometries;
+  // do not fabricate a placename just to satisfy the catalogue.
+  assert(typeof entity.name === 'string' && (entity.name.trim() || entity.kind === 'lake'), `${entity.id}: topónimo físico vacío`)
+  assert(ids.has(entity.id), `${entity.id}: accidente sin geometría`)
+  if (entity.kind === 'beach') assert(/^playa(s)?\b/i.test(entity.name), `${entity.id}: playa sin prefijo identificativo`)
+}
+for (const name of ['physicalAsturiasLabels', 'physicalEuropeLabels']) {
+  const collection = manifest.collections[name]
+  if (!collection) continue
+  const labels = await json(collection.url.replace('/data/atlas/', ''))
+  assert(labels.features.every(({ properties }) => properties.kind !== 'river'), `${name}: río etiquetado en el centro de una caja en lugar de sobre su recorrido`)
+}
+
 const transitManifest = await json('transit/manifest.json')
 const transitRoutes = await json('transit/routes.geojson')
 const transitStops = await json('transit/stops.geojson')

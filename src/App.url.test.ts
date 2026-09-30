@@ -35,6 +35,11 @@ describe('estado compartible del atlas', () => {
     expect(parseInitialUrl().politicalLevel).toBe('neighborhoods')
   })
 
+  it('conserva todos los filtros desactivados al compartir una vista', () => {
+    window.history.replaceState({}, '', '/mapa/fisico?filtros=')
+    expect([...parseInitialUrl().filters]).toEqual([])
+  })
+
   it('restaura filtros compartidos de transporte', () => {
     window.history.replaceState({}, '', '/mapa/transporte?fuentes=CTA,RENFE&transportes=bus,rail&tiempoReal=0')
     const state = parseInitialUrl()

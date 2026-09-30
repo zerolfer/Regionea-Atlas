@@ -1,5 +1,6 @@
 import type { FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
 import type { MapMode } from '../types'
+import { physicalSelectionFilter } from './physical'
 
 const POLITICAL_SOURCES = {
   countries: '/data/atlas/territories/countries.geojson',
@@ -137,7 +138,7 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-europe-coasts', type: 'fill', source: 'physical-europe', minzoom: 3, maxzoom: 9,
-      filter: ['==', ['get', 'kind'], 'coast'],
+      filter: ['in', ['get', 'kind'], ['literal', ['coast', 'bay', 'gulf', 'delta']]],
       paint: { 'fill-color': '#68a7af', 'fill-opacity': 0.2, 'fill-outline-color': '#397984' },
     },
     {
@@ -147,11 +148,31 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-europe-labels', type: 'symbol', source: 'physical-europe-labels', minzoom: 3.5, maxzoom: 9,
+      filter: ['in', ['get', 'kind'], ['literal', ['range', 'lake', 'peak', 'coast', 'valley']]],
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
         'text-max-width': 9, 'text-padding': 3, 'text-allow-overlap': false,
       },
       paint: { 'text-color': '#3b342c', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
+    },
+    {
+      id: 'physical-europe-marine-labels', type: 'symbol', source: 'physical-europe-labels', minzoom: 3.5,
+      filter: ['in', ['get', 'kind'], ['literal', ['bay', 'gulf', 'delta']]],
+      layout: {
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 13,
+        'text-max-width': 12, 'text-padding': 5, 'text-allow-overlap': false,
+      },
+      paint: { 'text-color': '#285f68', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.4 },
+    },
+    {
+      id: 'physical-europe-river-labels', type: 'symbol', source: 'physical-europe', minzoom: 4, maxzoom: 9,
+      filter: ['==', ['get', 'kind'], 'river'],
+      layout: {
+        'symbol-placement': 'line', 'symbol-spacing': 350,
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
+        'text-padding': 5, 'text-max-angle': 75, 'text-allow-overlap': false,
+      },
+      paint: { 'text-color': '#296f8a', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.5 },
     },
     {
       id: 'physical-rivers', type: 'line', source: 'physical-asturias', minzoom: 7.5,
@@ -180,7 +201,7 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-coast-points', type: 'circle', source: 'physical-asturias', minzoom: 11.5,
-      filter: ['in', ['get', 'kind'], ['literal', ['cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      filter: ['all', ['==', ['geometry-type'], 'Point'], ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'bay', 'gulf', 'delta', 'estuary', 'cliff', 'beach', 'island']]]],
       paint: { 'circle-color': '#397984', 'circle-radius': 3.5, 'circle-stroke-color': '#f6f1e7', 'circle-stroke-width': 1 },
     },
     {
@@ -192,14 +213,14 @@ function physicalLayers(): LayerSpecification[] {
       },
     },
     {
-      id: 'physical-river-labels', type: 'symbol', source: 'physical-asturias', minzoom: 10,
+      id: 'physical-river-labels', type: 'symbol', source: 'physical-asturias', minzoom: 8,
       filter: ['==', ['get', 'kind'], 'river'],
       layout: {
-        'symbol-placement': 'line', 'symbol-spacing': 650,
+        'symbol-placement': 'line', 'symbol-spacing': 350,
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
-        'text-padding': 18, 'text-allow-overlap': false,
+        'text-padding': 5, 'text-max-angle': 75, 'text-allow-overlap': false,
       },
-      paint: { 'text-color': '#296f8a', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
+      paint: { 'text-color': '#296f8a', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.5 },
     },
     {
       id: 'physical-point-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 9.4,
@@ -213,12 +234,12 @@ function physicalLayers(): LayerSpecification[] {
       paint: { 'text-color': '#2e2924', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
     },
     {
-      id: 'physical-coast-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 12.3,
-      filter: ['in', ['get', 'kind'], ['literal', ['cape', 'bay', 'gulf', 'estuary', 'cliff', 'beach', 'island']]],
+      id: 'physical-coast-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 11.5,
+      filter: ['in', ['get', 'kind'], ['literal', ['coast', 'cape', 'bay', 'gulf', 'delta', 'estuary', 'cliff', 'beach', 'island']]],
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
         'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-max-width': 9,
-        'text-padding': 18, 'text-allow-overlap': false, 'text-ignore-placement': false,
+        'text-padding': 6, 'text-allow-overlap': false, 'text-ignore-placement': false,
       },
       paint: { 'text-color': '#285f68', 'text-halo-color': '#f6f1e7', 'text-halo-width': 1.2 },
     },
@@ -233,16 +254,16 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-selected-point', type: 'circle', source: 'physical-asturias', minzoom: 0,
-      filter: selectedFilter,
+      filter: physicalSelectionFilter(undefined, 'Point'),
       paint: { 'circle-color': '#e45c37', 'circle-radius': 8, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 },
     },
     {
       id: 'physical-selected-line', type: 'line', source: 'physical-asturias', minzoom: 0,
-      filter: selectedFilter, paint: { 'line-color': '#e45c37', 'line-width': 4 },
+      filter: physicalSelectionFilter(undefined, 'LineString'), paint: { 'line-color': '#e45c37', 'line-width': 4 },
     },
     {
       id: 'physical-selected-fill', type: 'line', source: 'physical-asturias', minzoom: 0,
-      filter: selectedFilter, paint: { 'line-color': '#e45c37', 'line-width': 3 },
+      filter: physicalSelectionFilter(undefined, 'Polygon'), paint: { 'line-color': '#e45c37', 'line-width': 3 },
     },
     {
       id: 'physical-related-peaks', type: 'circle', source: 'physical-asturias', minzoom: 0,
@@ -251,17 +272,28 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-europe-selected-point', type: 'circle', source: 'physical-europe', minzoom: 0,
-      filter: selectedFilter,
+      filter: physicalSelectionFilter(undefined, 'Point'),
       paint: { 'circle-color': '#e45c37', 'circle-radius': 8, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 },
     },
     {
       id: 'physical-europe-selected-line', type: 'line', source: 'physical-europe', minzoom: 0,
-      filter: selectedFilter, paint: { 'line-color': '#e45c37', 'line-width': 4 },
+      filter: physicalSelectionFilter(undefined, 'LineString'), paint: { 'line-color': '#e45c37', 'line-width': 4 },
     },
     {
       id: 'physical-europe-selected-fill', type: 'line', source: 'physical-europe', minzoom: 0,
-      filter: selectedFilter, paint: { 'line-color': '#e45c37', 'line-width': 3 },
+      filter: physicalSelectionFilter(undefined, 'Polygon'), paint: { 'line-color': '#e45c37', 'line-width': 3 },
     },
+    ...['physical', 'physical-europe'].map((prefix) => ({
+      id: `${prefix}-selected-river-label`, type: 'symbol' as const,
+      source: prefix === 'physical' ? 'physical-asturias' : 'physical-europe',
+      filter: physicalSelectionFilter(undefined, 'LineString'),
+      layout: {
+        'symbol-placement': 'line' as const, 'symbol-spacing': 450,
+        'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 12,
+        'text-padding': 5, 'text-max-angle': 90, 'text-allow-overlap': true,
+      },
+      paint: { 'text-color': '#8a371f', 'text-halo-color': '#fffaf1', 'text-halo-width': 2 },
+    } as LayerSpecification)),
   ]
 }
 
@@ -413,9 +445,13 @@ export function buildStyle(mode: MapMode): StyleSpecification {
 
 export const POLITICAL_INTERACTIVE_LAYERS = POLITICAL_LEVEL_RANGES.flatMap(({ source }) => [`${source}-hit`, `${source}-labels`])
 export const PHYSICAL_INTERACTIVE_LAYERS = [
+  'physical-selected-point', 'physical-selected-line', 'physical-selected-fill',
+  'physical-europe-selected-point', 'physical-europe-selected-line', 'physical-europe-selected-fill',
   'physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-ranges', 'physical-europe-valleys',
   'physical-europe-coasts', 'physical-europe-peaks', 'physical-europe-labels',
+  'physical-europe-marine-labels', 'physical-europe-river-labels',
   'physical-rivers', 'physical-water', 'physical-protected', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points', 'physical-peaks',
   'physical-river-labels', 'physical-point-labels', 'physical-coast-labels', 'physical-area-labels',
+  'physical-selected-river-label', 'physical-europe-selected-river-label',
 ]
 export const TRANSIT_INTERACTIVE_LAYERS = ['transit-selected-route', 'transit-selected-stop', 'transit-selected-vehicle', ...TRANSIT_ROUTE_LAYERS.map(({ id }) => id), 'transit-stops-circle', 'transit-stops-labels', 'transit-vehicles-circle']
