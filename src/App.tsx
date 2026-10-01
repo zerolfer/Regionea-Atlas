@@ -16,7 +16,7 @@ import { isPhysicalEntity, loadAtlasData, PHYSICAL_KIND_LABELS, TERRITORY_KIND_L
 import type { AtlasData } from './data/atlas'
 import { loadTransitCatalog } from './data/transit'
 import type { TransitCatalog } from './data/transit'
-import { ALL_PHYSICAL_FILTERS, DEFAULT_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
+import { ALL_PHYSICAL_FILTERS, DEFAULT_PHYSICAL_FILTERS, parseInitialUrl, writeCameraParams } from './url-state'
 import { availablePhysicalFilters } from './map/physical'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, SearchItem, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from './types'
 
@@ -24,7 +24,6 @@ const MapView = lazy(() => import('./map/MapView'))
 const MODE_PATHS: Record<MapMode, string> = { political: 'politico', physical: 'fisico', transit: 'transporte' }
 const FILTER_LABELS: Record<PhysicalFilter, string> = {
   relief: 'Sierras', peaks: 'Picos', hydrography: 'Ríos y agua', valleys: 'Valles', coast: 'Costa', protected: 'Espacios protegidos',
-  hypsometry: 'Colores de altitud', terrain3d: 'Relieve 3D',
 }
 const POLITICAL_LEVEL_LABELS: Record<PoliticalLevel, string> = {
   auto: 'Automático', countries: 'Países', communities: 'Comunidades', provinces: 'Provincias',
@@ -76,10 +75,6 @@ export default function App() {
   const [contextIds, setContextIds] = useState<string[]>([])
   const [physicalFilters, setPhysicalFilters] = useState(initial.filters)
   const [appearance, setAppearance] = useState(initial.appearance)
-  // Temporary compatibility for the renderer; presentation no longer lives in UI filters.
-  const rendererFilters = useMemo(() => new Set<PhysicalFilter>([
-    ...physicalFilters, ...(appearance.hypsometry ? ['hypsometry' as const] : []), ...(appearance.terrain3d ? ['terrain3d' as const] : []),
-  ]), [physicalFilters, appearance.hypsometry, appearance.terrain3d])
   const [politicalLevel, setPoliticalLevel] = useState<PoliticalLevel>(initial.politicalLevel)
   const [view, setView] = useState<ViewState>(initial.view)
   const [externalViewRequest, setExternalViewRequest] = useState<{ view: ViewState; token: number } | null>(null)
@@ -203,22 +198,20 @@ export default function App() {
       if (selectedId) params.set('seleccion', selectedId)
       if (compareIds.length) params.set('comparar', compareIds.join(','))
       if (appearance.basemap === 'satellite') params.set('fondo', 'satelite')
-      if (mode === 'physical' && (!isDefaultPhysicalFilterSet(physicalFilters) || appearance.hypsometry || appearance.terrain3d)) params.set('filtros', [...rendererFilters].join(','))
+      if (mode === 'physical' && (!isDefaultPhysicalFilterSet(physicalFilters) || appearance.hypsometry || appearance.terrain3d)) params.set('filtros', [
+        ...physicalFilters, ...(appearance.hypsometry ? ['hypsometry'] : []), ...(appearance.terrain3d ? ['terrain3d'] : []),
+      ].join(','))
       if (mode === 'political' && politicalLevel !== 'auto') params.set('nivel', politicalLevel)
       if (mode === 'transit') {
         if (transitFilters.providers.size && transitFilters.providers.size !== transitCatalog.providers.length) params.set('fuentes', [...transitFilters.providers].join(','))
         if (transitFilters.modes.size && transitFilters.modes.size !== transitCatalog.modes.length) params.set('transportes', [...transitFilters.modes].join(','))
         if (!transitFilters.showRealtime) params.set('tiempoReal', '0')
       }
-      params.set('lng', view.center[0].toFixed(4))
-      params.set('lat', view.center[1].toFixed(4))
-      params.set('z', view.zoom.toFixed(2))
-      if (view.pitch) params.set('pitch', view.pitch.toFixed(1))
-      if (view.bearing) params.set('bearing', view.bearing.toFixed(1))
+      writeCameraParams(params, view, mode === 'physical' && appearance.terrain3d)
       window.history.replaceState({}, '', `/mapa/${MODE_PATHS[mode]}?${params.toString()}`)
     }, 220)
     return () => window.clearTimeout(timer)
-  }, [mode, selectedId, compareIds, physicalFilters, rendererFilters, appearance, politicalLevel, transitCatalog.modes.length, transitCatalog.providers.length, transitFilters, view])
+  }, [mode, selectedId, compareIds, physicalFilters, appearance, politicalLevel, transitCatalog.modes.length, transitCatalog.providers.length, transitFilters, view])
 
   useEffect(() => {
     const onPopState = () => {
@@ -361,7 +354,8 @@ export default function App() {
           transitSelection={transitSelection}
           compared={compareOpen ? compared : []}
           relatedPhysicalIds={relatedPhysicalIds}
-          physicalFilters={rendererFilters}
+          physicalFilters={physicalFilters}
+          appearance={appearance}
           transitFilters={transitFilters}
           politicalLevel={politicalLevel}
           locateRequest={locateRequest}

@@ -1,6 +1,7 @@
 import type { FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
-import type { MapMode } from '../types'
+import type { MapAppearance, MapMode } from '../types'
 import { physicalSelectionFilter } from './physical'
+import { SATELLITE_SOURCES } from './basemap'
 
 const POLITICAL_SOURCES = {
   countries: '/data/atlas/territories/countries.geojson',
@@ -367,7 +368,7 @@ export const TRANSIT_ROUTE_LAYERS = [
   { id: 'transit-routes-urban', extentClass: 'urban', minZoom: 9.5, baseWidth: 0.8 },
 ] as const
 
-export function buildStyle(mode: MapMode): StyleSpecification {
+export function buildStyle(mode: MapMode, basemap: MapAppearance['basemap'] = 'plan'): StyleSpecification {
   const sources: StyleSpecification['sources'] = {
     openmaptiles: {
       type: 'vector',
@@ -434,6 +435,30 @@ export function buildStyle(mode: MapMode): StyleSpecification {
         ]
       : silentBaseLayers()),
   ]
+
+  if (basemap === 'satellite') {
+    Object.assign(sources, SATELLITE_SOURCES)
+    // Do not paint opaque water/land/buildings over the imagery.
+    for (let index = layers.length - 1; index >= 0; index--) {
+      if (layers[index].id.startsWith('base-') || layers[index].id.startsWith('physical-base-')) layers.splice(index, 1)
+    }
+    const shade = layers.find(({ id }) => id === 'hillshade')
+    if (shade) shade.layout = { visibility: 'none' }
+    layers.splice(1, 0,
+      { id: 'satellite-overview', type: 'raster', source: 'satellite-overview', paint: { 'raster-fade-duration': 150 } },
+      { id: 'satellite-detail', type: 'raster', source: 'satellite-detail', minzoom: 6, paint: { 'raster-fade-duration': 150 } },
+    )
+  }
+  if (mode === 'physical') layers.push({
+    id: 'buildings-3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14,
+    layout: { visibility: 'none' }, filter: ['!=', ['get', 'hide_3d'], true],
+    paint: {
+      'fill-extrusion-color': basemap === 'satellite' ? '#d6d3c4' : '#c8beb0',
+      'fill-extrusion-height': ['max', 0, ['to-number', ['get', 'render_height'], 0]],
+      'fill-extrusion-base': ['max', 0, ['to-number', ['get', 'render_min_height'], 0]],
+      'fill-extrusion-opacity': 0.85,
+    },
+  })
 
   if (mode === 'political') layers.push(...politicalLayers())
   if (mode === 'physical') {

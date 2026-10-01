@@ -1,10 +1,18 @@
-import type { MapAppearance, MapMode, PhysicalFilter, PoliticalLevel, TransitMode } from './types'
+import type { MapAppearance, MapMode, PhysicalFilter, PoliticalLevel, TransitMode, ViewState } from './types'
 
 const PATH_MODES: Record<string, MapMode> = { politico: 'political', fisico: 'physical', transporte: 'transit' }
 export const DEFAULT_PHYSICAL_FILTERS: PhysicalFilter[] = ['relief', 'peaks', 'hydrography', 'coast', 'protected']
 export const ALL_PHYSICAL_FILTERS: PhysicalFilter[] = ['relief', 'peaks', 'hydrography', 'valleys', 'coast', 'protected']
 export const POLITICAL_LEVELS: PoliticalLevel[] = ['auto', 'countries', 'communities', 'provinces', 'comarcas', 'concejos', 'parishes', 'neighborhoods']
 export const TRANSIT_MODES: TransitMode[] = ['bus', 'rail', 'ferry', 'air']
+
+export function writeCameraParams(params: URLSearchParams, view: ViewState, terrainEnabled: boolean) {
+  params.set('lng', view.center[0].toFixed(4))
+  params.set('lat', view.center[1].toFixed(4))
+  params.set('z', view.zoom.toFixed(2))
+  if (view.pitch || terrainEnabled) params.set('pitch', (view.pitch ?? 0).toFixed(1))
+  if (view.bearing) params.set('bearing', view.bearing.toFixed(1))
+}
 
 export function parseInitialUrl() {
   const params = new URLSearchParams(window.location.search)

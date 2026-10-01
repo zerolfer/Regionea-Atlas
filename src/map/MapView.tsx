@@ -5,7 +5,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { buildStyle, PHYSICAL_INTERACTIVE_LAYERS, POLITICAL_INTERACTIVE_LAYERS, POLITICAL_LEVEL_RANGES, TRANSIT_INTERACTIVE_LAYERS, TRANSIT_ROUTE_LAYERS } from './style'
 import { geometryBounds } from '../data/transit'
-import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
+import type { AtlasEntity, BottomSheetLevel, MapAppearance, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
 import { viewportPadding } from './viewport-padding'
 import { bottomSheetSafeAreaInset } from '../bottom-sheet'
@@ -23,6 +23,7 @@ type Props = {
   compared: AtlasEntity[]
   relatedPhysicalIds: string[]
   physicalFilters: Set<PhysicalFilter>
+  appearance: MapAppearance
   transitFilters: TransitFilters
   politicalLevel: PoliticalLevel
   locateRequest: UserLocation | null
@@ -68,7 +69,6 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
     peaks: ['physical-europe-peaks', 'physical-peaks'],
     hydrography: ['physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-river-labels', 'physical-rivers', 'physical-water'],
     valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts', 'physical-europe-marine-labels', 'physical-coastal-areas', 'physical-coastal-labels', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points'], protected: ['physical-protected'],
-    hypsometry: ['physical-hypsometry'], terrain3d: [],
   }
   Object.entries(groups).forEach(([filter, layers]) => {
     layers.forEach((layer) => {
@@ -95,12 +95,18 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
     ]
     map.setFilter('physical-area-labels', ['in', ['get', 'kind'], ['literal', areaKinds]] as FilterSpecification)
   }
-  if (map.getLayer('hillshade') && map.getSource('terrain-dem')) {
-    const terrainEnabled = filters.has('terrain3d')
-    map.setTerrain(terrainEnabled ? { source: 'terrain-dem', exaggeration: 1.35 } : null)
-    if (terrainEnabled && map.getPitch() < 20) map.easeTo({ pitch: 45, duration: 550 })
-    if (!terrainEnabled && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 })
+}
+
+function applyAppearance(map: Map, mode: MapMode, appearance: MapAppearance) {
+  const enabled = mode === 'physical' && appearance.terrain3d
+  if (map.getSource('terrain-dem')) {
+    const current = map.getTerrain()
+    if (enabled && !current) map.setTerrain({ source: 'terrain-dem', exaggeration: 1.35 })
+    if (!enabled && current) map.setTerrain(null)
   }
+  if (map.getLayer('physical-hypsometry')) map.setLayoutProperty('physical-hypsometry', 'visibility', appearance.hypsometry ? 'visible' : 'none')
+  if (map.getLayer('buildings-3d')) map.setLayoutProperty('buildings-3d', 'visibility', enabled ? 'visible' : 'none')
+  if (map.getLayer('physical-base-buildings')) map.setLayoutProperty('physical-base-buildings', 'visibility', enabled ? 'none' : 'visible')
 }
 
 function applyPoliticalLevel(map: Map, activeLevel: PoliticalLevel) {
@@ -204,6 +210,10 @@ export default function MapView(props: Props) {
   const mapRef = useRef<Map | null>(null)
   const propsRef = useRef(props)
   const styleModeRef = useRef(props.mode)
+  const styleBasemapRef = useRef(props.appearance.basemap)
+  const terrainEnabledRef = useRef(props.mode === 'physical' && props.appearance.terrain3d)
+  const restoredViewTokenRef = useRef(props.externalViewRequest?.token)
+  const imageryErrorReportedRef = useRef(false)
   const styleReadyRef = useRef(false)
   const focusController = useRef(new SelectionFocusController())
   propsRef.current = props
@@ -211,10 +221,11 @@ export default function MapView(props: Props) {
 
   useEffect(() => {
     const map = new Map({
-      container: 'map', style: buildStyle(propsRef.current.mode),
+      container: 'map', style: buildStyle(propsRef.current.mode, propsRef.current.appearance.basemap),
       center: propsRef.current.initialView.center || ASTURIAS_CENTER,
-      zoom: propsRef.current.initialView.zoom || 8,
-      attributionControl: false, fadeDuration: 120, maxZoom: 17,
+      zoom: propsRef.current.initialView.zoom ?? 8,
+      pitch: propsRef.current.initialView.pitch ?? 0, bearing: propsRef.current.initialView.bearing ?? 0,
+      attributionControl: false, fadeDuration: 120, maxZoom: 17, maxPitch: 80,
     })
     mapRef.current = map
     map.addControl(new NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
@@ -268,12 +279,19 @@ export default function MapView(props: Props) {
     })
     map.on('moveend', () => {
       const center = map.getCenter()
-      propsRef.current.onViewportChange({ center: [center.lng, center.lat], zoom: map.getZoom() })
+      propsRef.current.onViewportChange({ center: [center.lng, center.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() })
+    })
+    map.on('error', (event) => {
+      if (!('sourceId' in event) || event.sourceId !== 'satellite-detail') { console.error(event.error); return }
+      if (propsRef.current.appearance.basemap !== 'satellite' || imageryErrorReportedRef.current) return
+      imageryErrorReportedRef.current = true
+      propsRef.current.onToast('No se pudo cargar el detalle satelital. Se conserva la imagen general de NASA.')
     })
     map.on('style.load', () => {
       hideRiverTooltip()
       styleReadyRef.current = true
       applyPhysicalFilters(map, propsRef.current.physicalFilters)
+      applyAppearance(map, propsRef.current.mode, propsRef.current.appearance)
       applyPoliticalLevel(map, propsRef.current.politicalLevel)
       applyTransitFilters(map, propsRef.current.transitFilters)
       applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
@@ -294,11 +312,30 @@ export default function MapView(props: Props) {
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    if (styleModeRef.current === props.mode) return
+    if (styleModeRef.current === props.mode && styleBasemapRef.current === props.appearance.basemap) return
     styleModeRef.current = props.mode
+    styleBasemapRef.current = props.appearance.basemap
+    imageryErrorReportedRef.current = false
     styleReadyRef.current = false
-    map.setStyle(buildStyle(props.mode), { diff: false })
-  }, [props.mode])
+    map.setStyle(buildStyle(props.mode, props.appearance.basemap), { diff: false })
+  }, [props.mode, props.appearance.basemap])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const restoringView = props.externalViewRequest?.token !== restoredViewTokenRef.current
+    restoredViewTokenRef.current = props.externalViewRequest?.token
+    const enabled = props.mode === 'physical' && props.appearance.terrain3d
+    if (styleReadyRef.current) applyAppearance(map, props.mode, props.appearance)
+    if (enabled !== terrainEnabledRef.current) {
+      terrainEnabledRef.current = enabled
+      // URL restoration owns its exact camera, including a deliberately flat 3D view.
+      if (!restoringView) {
+        if (enabled && map.getPitch() < 20) map.easeTo({ pitch: 60, duration: 550 })
+        if (!enabled && map.getPitch() > 0) map.easeTo({ pitch: 0, duration: 450 })
+      }
+    }
+  }, [props.mode, props.appearance, props.externalViewRequest])
 
   useEffect(() => {
     const map = mapRef.current
@@ -318,7 +355,7 @@ export default function MapView(props: Props) {
   useEffect(() => {
     const map = mapRef.current
     if (!map || !props.externalViewRequest) return
-    map.jumpTo({ center: props.externalViewRequest.view.center, zoom: props.externalViewRequest.view.zoom })
+    map.jumpTo({ center: props.externalViewRequest.view.center, zoom: props.externalViewRequest.view.zoom, pitch: props.externalViewRequest.view.pitch ?? 0, bearing: props.externalViewRequest.view.bearing ?? 0 })
   }, [props.externalViewRequest])
 
   useEffect(() => {

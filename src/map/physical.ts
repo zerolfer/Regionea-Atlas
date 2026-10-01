@@ -4,7 +4,7 @@ import type { AtlasEntity, PhysicalFilter } from '../types'
 export const PHYSICAL_FILTER_KINDS: Record<PhysicalFilter, string[]> = {
   relief: ['range'], peaks: ['peak'], hydrography: ['river', 'lake', 'reservoir'],
   valleys: ['valley'], coast: ['coast', 'cape', 'bay', 'gulf', 'delta', 'estuary', 'cliff', 'beach', 'island'],
-  protected: ['protected-area'], hypsometry: [], terrain3d: [],
+  protected: ['protected-area'],
 }
 
 // These features denote surfaces, never point landmarks. A gazetteer position

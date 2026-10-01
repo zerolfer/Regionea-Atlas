@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { DEFAULT_PHYSICAL_FILTERS, parseInitialUrl } from './url-state'
+import { DEFAULT_PHYSICAL_FILTERS, parseInitialUrl, writeCameraParams } from './url-state'
 
 afterEach(() => window.history.replaceState({}, '', '/'))
 
@@ -68,12 +68,20 @@ it('acota cámaras compartidas y conserva enlaces 3D sin inclinación explícita
   expect(parseInitialUrl().view.pitch).toBe(0)
 })
 
+it('comparte una vista 3D horizontal sin confundir inclinación cero con ausencia de parámetro', () => {
+  const params = new URLSearchParams('filtros=terrain3d')
+  writeCameraParams(params, { center: [-4.8, 43.2], zoom: 12, pitch: 0, bearing: 125 }, true)
+  window.history.replaceState({}, '', `/mapa/fisico?${params}`)
+  expect(params.get('pitch')).toBe('0.0')
+  expect(parseInitialUrl().view).toEqual({ center: [-4.8, 43.2], zoom: 12, pitch: 0, bearing: 125 })
+})
+
 it('keeps optional elevation layers disabled in the default physical view', () => {
   window.history.replaceState({}, '', '/mapa/fisico')
 
   const state = parseInitialUrl()
 
   expect([...state.filters]).toEqual(DEFAULT_PHYSICAL_FILTERS)
-  expect(state.filters.has('hypsometry')).toBe(false)
-  expect(state.filters.has('terrain3d')).toBe(false)
+  expect(state.appearance.hypsometry).toBe(false)
+  expect(state.appearance.terrain3d).toBe(false)
 })
