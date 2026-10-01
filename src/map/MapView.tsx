@@ -8,6 +8,7 @@ import { geometryBounds } from '../data/transit'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
 import { viewportPadding } from './viewport-padding'
+import { bottomSheetSafeAreaInset } from '../bottom-sheet'
 import { CollapsedAttributionControl } from './attribution-control'
 import { PHYSICAL_FILTER_KINDS, physicalSelectionFilter } from './physical'
 import { fitEntityBounds, focusPoint, SelectionFocusController } from './selection-focus'
@@ -38,7 +39,7 @@ type Props = {
 }
 
 function navigationPadding(props: Props) {
-  return viewportPadding(window.innerWidth, window.visualViewport?.height ?? window.innerHeight, props.sheetLevel, props.desktopPanelCollapsed)
+  return viewportPadding(window.innerWidth, window.visualViewport?.height ?? window.innerHeight, props.sheetLevel, props.desktopPanelCollapsed, bottomSheetSafeAreaInset())
 }
 
 function interactiveLayers(mode: MapMode) {
