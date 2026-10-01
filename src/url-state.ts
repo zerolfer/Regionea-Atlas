@@ -38,7 +38,7 @@ export function parseInitialUrl() {
     view: {
       center: Number.isFinite(longitude) && Number.isFinite(latitude) ? [longitude, latitude] as [number, number] : [-5.86, 43.31] as [number, number],
       zoom: Number.isFinite(zoom) ? zoom : 8,
-      pitch: mode === 'physical' && appearance.terrain3d ? Number.isFinite(pitch) ? Math.max(0, Math.min(80, pitch)) : 60 : 0,
+      pitch: Number.isFinite(pitch) ? Math.max(0, Math.min(80, pitch)) : mode === 'physical' && appearance.terrain3d ? 60 : 0,
       bearing: Number.isFinite(bearing) ? ((bearing + 180) % 360 + 360) % 360 - 180 : 0,
     },
     filters: new Set<PhysicalFilter>(legacyFilters.filter((item): item is PhysicalFilter => ALL_PHYSICAL_FILTERS.includes(item as PhysicalFilter))),

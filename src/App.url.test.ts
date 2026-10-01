@@ -63,9 +63,19 @@ it('acota cámaras compartidas y conserva enlaces 3D sin inclinación explícita
   expect(parseInitialUrl().view).toMatchObject({ pitch: 80, bearing: 0 })
   window.history.replaceState({}, '', '/mapa/fisico?filtros=terrain3d')
   expect(parseInitialUrl().view.pitch).toBe(60)
-  window.history.replaceState({}, '', '/mapa/transporte?fondo=unknown&pitch=70')
+  window.history.replaceState({}, '', '/mapa/transporte?fondo=unknown')
   expect(parseInitialUrl().appearance.basemap).toBe('plan')
   expect(parseInitialUrl().view.pitch).toBe(0)
+})
+
+it('restaura una inclinación explícita también sin terreno y en los tres modos', () => {
+  for (const path of ['fisico', 'politico', 'transporte']) {
+    const params = new URLSearchParams('fondo=satelite')
+    writeCameraParams(params, { center: [-4.8, 43.2], zoom: 12, pitch: 55, bearing: 125 }, false)
+    window.history.replaceState({}, '', `/mapa/${path}?${params}`)
+    expect(parseInitialUrl().view).toEqual({ center: [-4.8, 43.2], zoom: 12, pitch: 55, bearing: 125 })
+    expect(parseInitialUrl().appearance.terrain3d).toBe(false)
+  }
 })
 
 it('comparte una vista 3D horizontal sin confundir inclinación cero con ausencia de parámetro', () => {

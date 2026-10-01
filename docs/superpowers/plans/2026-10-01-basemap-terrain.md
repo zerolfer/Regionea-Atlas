@@ -39,12 +39,12 @@
 - `parseInitialUrl()` añade `appearance`; `filters` contiene solo accidentes. Serialización conserva `hypsometry`/`terrain3d` en `filtros` por compatibilidad, y añade `fondo=satelite`, `pitch` y `bearing` cuando corresponda.
 - `MapLayers({ mode, value, onChange })` consume `MapMode`, `MapAppearance` y `(next: MapAppearance) => void`.
 
-- [ ] Escribir pruebas de URL: `fondo=satelite&filtros=peaks,hypsometry,terrain3d&pitch=74&bearing=125` restaura apariencia y cámara; `filters` solo incluye `peaks`. Limitar `pitch=999` a 80, usar 60 para enlace antiguo de 3D sin pitch; ignorar fondo desconocido.
-- [ ] Escribir pruebas del selector: fondos en todos los modos; ajustes únicamente en físico; Escape devuelve foco; pulsación exterior cierra; no aparece interruptor «Sombreado».
-- [ ] Ejecutar `npx vitest run src/App.url.test.ts src/components/MapLayers.test.tsx` y confirmar fallos esperados.
-- [ ] Implementar contratos, selector y migración URL según los valores anteriores; renombrar el filtro de cordilleras a «Sierras».
-- [ ] Repetir las pruebas y confirmar que pasan.
-- [ ] Commit: `feat: separate basemap appearance from geographic filters`.
+- [x] Escribir pruebas de URL: `fondo=satelite&filtros=peaks,hypsometry,terrain3d&pitch=74&bearing=125` restaura apariencia y cámara; `filters` solo incluye `peaks`. Limitar `pitch=999` a 80, usar 60 para enlace antiguo de 3D sin pitch; ignorar fondo desconocido.
+- [x] Escribir pruebas del selector: fondos en todos los modos; ajustes únicamente en físico; Escape devuelve foco; pulsación exterior cierra; no aparece interruptor «Sombreado».
+- [x] Ejecutar `npx vitest run src/App.url.test.ts src/components/MapLayers.test.tsx` y confirmar fallos esperados.
+- [x] Implementar contratos, selector y migración URL según los valores anteriores; renombrar el filtro de cordilleras a «Sierras».
+- [x] Repetir las pruebas y confirmar que pasan.
+- [x] Commit: `feat: separate basemap appearance from geographic filters`.
 
 ### Task 2: Renderizado y cámara — completada
 
@@ -55,25 +55,25 @@
 - Produce `buildStyle(mode: MapMode, basemap?: MapAppearance['basemap']): StyleSpecification` y prop `appearance: MapAppearance` de `MapView`.
 - `onViewportChange` incluye inclinación y orientación reales, no una estimación del cliente.
 
-- [ ] Escribir pruebas reales de estilos: validación MapLibre sin errores en los tres modos, raster debajo de datos, sin raster satelital en plano, detalle limitado a zooms 6–14 y respaldo mundial debajo. Evaluar filtro de edificios con `hide_3d`; altura ausente no crea extrusión ficticia.
-- [ ] Escribir pruebas de cámara en la frontera WebGL: filtros y cambios de fondo no fuerzan pitch; activar 3D desde plano usa 60; panel conserva la prueba existente de no mover cámara. Vista compartida restaura pitch y bearing sin animación inicial contradictoria.
-- [ ] Ejecutar `npx vitest run src/map/basemap.test.ts src/map/MapView.test.tsx` y confirmar fallos esperados.
-- [ ] Añadir fuentes comprobadas en el diseño, ocultar superficies opacas del plano en satélite; conservar datos/etiquetas. Separar aplicación de terreno/altitud de los filtros; extrusiones OSM cercanas, sin fotogrametría. Configurar maxPitch 80; animar solo cambios explícitos de 3D, respetando movimiento reducido.
-- [ ] Repetir pruebas; verificar una tesela real desde el navegador y una caída del proveedor con respaldo visible. No usar solicitudes por debajo del mínimo WMTS publicado.
-- [ ] Commit: `feat: add global satellite basemap and horizon terrain camera`.
+- [x] Escribir pruebas reales de estilos: validación MapLibre sin errores en los tres modos, raster debajo de datos, sin raster satelital en plano, detalle limitado a zooms 6–14 y respaldo mundial debajo. Evaluar filtro de edificios con `hide_3d`; altura ausente no crea extrusión ficticia.
+- [x] Escribir pruebas de cámara en la frontera WebGL: filtros y cambios de fondo no fuerzan pitch; activar 3D desde plano usa 60; panel conserva la prueba existente de no mover cámara. Vista compartida restaura pitch y bearing sin animación inicial contradictoria.
+- [x] Ejecutar `npx vitest run src/map/basemap.test.ts src/map/MapView.test.tsx` y confirmar fallos esperados.
+- [x] Añadir fuentes comprobadas en el diseño, ocultar superficies opacas del plano en satélite; conservar datos/etiquetas. Separar aplicación de terreno/altitud de los filtros; extrusiones OSM cercanas, sin fotogrametría. Configurar maxPitch 80; animar solo cambios explícitos de 3D, respetando movimiento reducido.
+- [x] Repetir pruebas; verificar una tesela real desde el navegador y una caída del proveedor con respaldo visible. No usar solicitudes por debajo del mínimo WMTS publicado.
+- [x] Commit: `feat: add global satellite basemap and horizon terrain camera`.
 
-### Task 3: Contratos, regresión y entrega
+### Task 3: Contratos, regresión y entrega — completada
 
 **Files:** actualizar `docs/contracts.md`, `docs/architecture.md`, `docs/pendientes.md` y resultados de este plan.
 
 **Interfaces:** documentar estado URL y orden de capas implementados; no cambiar los contratos de datasets GeoJSON.
 
-- [ ] Documentar fuentes, atribuciones, fechas, resolución, límites de servicio y cómo sustituir el proveedor sin tocar filtros geográficos.
-- [ ] Ejecutar `npm test`, `npm run lint` y `npm run build`; corregir regresiones.
-- [ ] Revisar en escritorio y móvil: físico montaña/cámara 3D, ciudad/edificios; fondos en político/transporte; selección y URL restauradas; océanos; panel abierto/cerrado; búsqueda sobre panel; teclado y Escape. Recoger capturas fuera del repositorio.
-- [ ] Solicitar una revisión independiente acotada, corregir hallazgos y repetir comprobaciones afectadas.
-- [ ] Commit: `docs: document basemap contracts and deferred imagery enhancements`.
-- [ ] Entregar para revisión manual. No hacer merge/push hasta autorización.
+- [x] Documentar fuentes, atribuciones, fechas, resolución, límites de servicio y cómo sustituir el proveedor sin tocar filtros geográficos.
+- [x] Ejecutar `npm test`, `npm run lint` y `npm run build`; corregir regresiones.
+- [x] Revisar en escritorio y móvil: físico montaña/cámara 3D, ciudad/edificios; fondos en político/transporte; selección y URL restauradas; océanos; panel abierto/cerrado; búsqueda sobre panel; teclado y Escape. Recoger capturas fuera del repositorio.
+- [x] Solicitar una revisión independiente acotada, corregir hallazgos y repetir comprobaciones afectadas.
+- [x] Commit: `docs: document basemap contracts and deferred imagery enhancements`.
+- [x] Entregar para revisión manual. No hacer merge/push hasta autorización.
 
 ## Auto-revisión
 
@@ -84,7 +84,9 @@ Los requisitos están cubiertos por las tres tareas; los cinco riesgos tienen co
 - Task 1: pruebas URL/selector RED (5 fallos esperados) → GREEN; suite completa 72/72, validación de datos, lint y build correctos. Commit `a08b67a`.
 - Task 2: pruebas de estilos/cámara RED (4 fallos esperados) → GREEN; regresiones adicionales para cambios tras restaurar URL, inclinación cero explícita y registro de errores ajenos al satélite. Suite completa 80/80, validadores, lint y build correctos. Commit `30c558e`.
 - Navegador real: montaña satelital a 74°, edificios de Gijón a 70°, fondos político/transporte, búsqueda de Pico Urriellu con navegación conservando orientación, hoja en sus tres estados sin modificar cámara y selector manejable mediante teclado/Escape.
-- QA responsive: 1280×720, 850×720 y 390×844. Corregido solapamiento inicial del botón Capas con la hoja móvil abierta; queda a 116–160 px, antes del tope superior de la hoja (177 px). En escritorio estrecho queda por encima del cambio de modo. Atribución sigue anclada abajo.
+- QA responsive: 1280×720, 850×720, 390×844, 375×667, 320×568 y horizontal 667×375. Corregido solapamiento del botón Capas con la hoja móvil abierta: posición final junto al cambio de modo (65–109 px), o en la cabecera (10–54 px) con altura ≤520 px. En escritorio estrecho queda por encima del cambio de modo. Atribución sigue anclada abajo.
 - Caída simulada de Terrascope: imagen general NASA visible, terreno y entidades conservados, un aviso sin reiniciar cámara. Restaurada la red de la pestaña de prueba.
 - Limitaciones de verificación: el gesto multitáctil se mantiene en MapLibre, pero requiere revisión manual en un dispositivo físico; imagen de 10 m no aporta detalle urbano adicional al ampliar. Advertencia conocida de tamaño del chunk MapLibre en build, sin errores de compilación.
-- Task 3: documentación actualizada; revisión independiente y entrega pendientes. Sin merge ni push.
+- Task 3: documentación actualizada, revisión independiente completada y hallazgos importantes corregidos en una pasada. Sin hallazgos críticos ni menores pendientes. Sin merge ni push.
+- Revisión final: conservar/reaplicar vehículos tras cada cambio de fondo y refrescar sin vaciar el último GeoJSON válido; restaurar inclinación explícita en los tres modos, incluso sin terreno. Las dos pruebas de regresión fallaron antes y pasan tras corregir. Solapamiento del móvil compacto reproducido mediante geometría DOM (160 > 119 px) y verificado tras el ajuste (109 < 119 px); también vertical 667 px y horizontal. Suite final 82/82, validadores, lint y build correctos.
+- Decisiones de ejecución: reutilizar la rama y checkout existentes por rapidez (requiere evitar ediciones concurrentes en los mismos archivos); registro nativo manual porque los helpers Bash no funcionan con las rutas Windows (coste de mantenimiento manual). Gestos en dispositivo físico y disponibilidad futura de servicios requieren revisión/seguimiento fuera de estas comprobaciones; no se promete garantía de servicio.

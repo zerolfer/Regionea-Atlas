@@ -273,7 +273,7 @@ La selección de transporte no se restaura actualmente desde `seleccion`: el par
 
 `MapAppearance = { basemap: 'plan' | 'satellite'; hypsometry: boolean; terrain3d: boolean }` es estado de presentación independiente. Su valor inicial es plano sin colores de altitud ni 3D. El fondo se aplica en todos los modos; altitud, terreno y edificios 3D solo en físico. Para conservar URLs publicadas, `hypsometry` y `terrain3d` se leen y escriben dentro de `filtros`, pero el parser los separa y nunca los entrega como filtros de entidades.
 
-`ViewState` añade `pitch?: number` y `bearing?: number`. La inclinación restaurada se limita a 0–80°; un enlace físico antiguo con `terrain3d` sin inclinación usa 60°, mientras que los demás comienzan a 0°. La orientación se normaliza a −180–180°. La serialización incluye `pitch=0.0` cuando el 3D está activo y la cámara está cenital: omitirlo restauraría incorrectamente 60°. Centro, zoom, inclinación y orientación proceden de los eventos de MapLibre, no se recalculan al mover el panel ni al cambiar filtros o fondo.
+`ViewState` añade `pitch?: number` y `bearing?: number`. La inclinación explícita se restaura en cualquier modo, con o sin terreno, y se limita a 0–80°; sin ese parámetro, un enlace físico antiguo con `terrain3d` usa 60° y los demás comienzan a 0°. La orientación se normaliza a −180–180°. La serialización incluye `pitch=0.0` cuando el 3D está activo y la cámara está cenital: omitirlo restauraría incorrectamente 60°. Centro, zoom, inclinación y orientación proceden de los eventos de MapLibre, no se recalculan al mover el panel ni al cambiar filtros o fondo.
 
 ## Fondos externos y edificios
 

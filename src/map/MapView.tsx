@@ -214,6 +214,7 @@ export default function MapView(props: Props) {
   const terrainEnabledRef = useRef(props.mode === 'physical' && props.appearance.terrain3d)
   const restoredViewTokenRef = useRef(props.externalViewRequest?.token)
   const imageryErrorReportedRef = useRef(false)
+  const lastVehiclesRef = useRef<Parameters<GeoJSONSource['setData']>[0] | null>(null)
   const styleReadyRef = useRef(false)
   const focusController = useRef(new SelectionFocusController())
   propsRef.current = props
@@ -368,8 +369,7 @@ export default function MapView(props: Props) {
         const data = await response.json()
         if (!active) return
         const source = map.getSource('transit-vehicles') as GeoJSONSource | undefined
-        if (!source) return
-        source.setData({
+        const vehicles: Parameters<GeoJSONSource['setData']>[0] = {
           type: 'FeatureCollection',
           features: (data.vehicles || []).map((vehicle: {
             id: string
@@ -386,14 +386,20 @@ export default function MapView(props: Props) {
             },
             geometry: { type: 'Point', coordinates: [vehicle.longitude, vehicle.latitude] },
           })),
-        })
+        }
+        lastVehiclesRef.current = vehicles
+        source?.setData(vehicles)
       } catch {
         // El mapa mantiene el último GeoJSON válido y el horario programado.
       }
     }
-    const onStyleLoad = () => refreshVehicles()
+    const onStyleLoad = () => {
+      const source = map.getSource('transit-vehicles') as GeoJSONSource | undefined
+      if (lastVehiclesRef.current) source?.setData(lastVehiclesRef.current)
+      void refreshVehicles()
+    }
+    map.on('style.load', onStyleLoad)
     if (map.isStyleLoaded() && map.getSource('transit-vehicles')) refreshVehicles()
-    else map.once('style.load', onStyleLoad)
     const interval = window.setInterval(refreshVehicles, 30_000)
     return () => {
       active = false

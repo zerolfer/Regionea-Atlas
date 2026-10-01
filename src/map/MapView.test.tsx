@@ -5,10 +5,22 @@ import type { AtlasEntity } from '../types'
 
 const { camera, listeners } = vi.hoisted(() => {
   const listeners: Record<string, (event?: { sourceId?: string; error?: Error }) => void> = {}
+  const handlers = new globalThis.Map<string, Set<(event?: { sourceId?: string; error?: Error }) => void>>()
+  function on(event: string, callback: (event?: { sourceId?: string; error?: Error }) => void) {
+    if (!handlers.has(event)) handlers.set(event, new Set())
+    handlers.get(event)!.add(callback)
+    listeners[event] = (value) => [...handlers.get(event)!].forEach((handler) => handler(value))
+  }
   const camera = {
     setPadding: vi.fn(), jumpTo: vi.fn(), stop: vi.fn(), easeTo: vi.fn(), fitBounds: vi.fn(),
     getPadding: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
-    addControl: vi.fn(), on: vi.fn((event: string, callback: (event?: { sourceId?: string; error?: Error }) => void) => { listeners[event] = callback }),
+    addControl: vi.fn(), on: vi.fn(on),
+    off: vi.fn((event: string, callback: (event?: { sourceId?: string; error?: Error }) => void) => handlers.get(event)?.delete(callback)),
+    once: vi.fn((event: string, callback: () => void) => {
+      const once = () => { handlers.get(event)?.delete(once); callback() }
+      on(event, once)
+    }),
+    isStyleLoaded: vi.fn(() => true), resetListeners: () => handlers.clear(),
     getCanvas: () => document.createElement('canvas'), getLayer: vi.fn(() => undefined as object | undefined),
     getSource: vi.fn(() => undefined as object | undefined), remove: vi.fn(),
     getTerrain: vi.fn(() => null as { source: string; exaggeration: number } | null), setTerrain: vi.fn(),
@@ -28,6 +40,7 @@ import MapView from './MapView'
 import { Map } from 'maplibre-gl'
 
 beforeEach(() => {
+  camera.resetListeners()
   camera.getLayer.mockReturnValue(undefined)
   camera.getSource.mockReturnValue(undefined)
   camera.getTerrain.mockReturnValue(null)
@@ -46,6 +59,28 @@ function props(): ComponentProps<typeof MapView> {
     onEntityClick: vi.fn(), onTransitClick: vi.fn(), onViewportChange: vi.fn(), onLocateMatches: vi.fn(), onToast: vi.fn(),
   }
 }
+
+it('conserva vehículos en cada cambio de fondo aunque el refresco de red falle', async () => {
+  const source = { setData: vi.fn() }
+  camera.getSource.mockImplementation((id?: string) => id === 'transit-vehicles' ? source : undefined)
+  const fetchRealtime = vi.fn().mockResolvedValueOnce({ json: async () => ({ status: 'live', vehicles: [{ id: 'renfe:1', longitude: -5.6, latitude: 43.5 }] }) }).mockRejectedValue(new Error('Offline'))
+  vi.stubGlobal('fetch', fetchRealtime)
+  const initial = { ...props(), mode: 'transit' as const }
+  const { rerender } = render(<MapView {...initial} />)
+  await act(async () => {})
+  const cached = source.setData.mock.calls.at(-1)?.[0]
+  expect(cached.features[0].properties.id).toBe('renfe:1')
+  source.setData.mockClear()
+  rerender(<MapView {...initial} appearance={{ ...initial.appearance, basemap: 'satellite' }} />)
+  await act(async () => listeners['style.load']())
+  expect(source.setData).toHaveBeenCalledWith(cached)
+  expect(fetchRealtime).toHaveBeenCalledTimes(2)
+  source.setData.mockClear()
+  rerender(<MapView {...initial} />)
+  await act(async () => listeners['style.load']())
+  expect(source.setData).toHaveBeenCalledWith(cached)
+  expect(fetchRealtime).toHaveBeenCalledTimes(3)
+})
 
 it('cambiar la altura del panel no mueve la cámara ni el margen global', () => {
   vi.stubGlobal('innerWidth', 390)

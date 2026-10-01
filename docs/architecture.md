@@ -79,9 +79,11 @@ El snapshot contiene rutas, paradas, calendarios y salidas por parada. Los filtr
 
 El endpoint de salidas combina el calendario estático con actualizaciones GTFS-Realtime de Renfe cuando puede relacionarlas. Si la API falla, el cliente intenta cargar el JSON estático de la parada.
 
+Los vehículos se refrescan cada 30 segundos y después de cada `style.load`. El componente conserva en memoria el último GeoJSON recibido y lo reaplica inmediatamente al recrear el estilo (por ejemplo, Plano/Satélite); si la nueva petición falla no desaparecen las posiciones anteriores. Esta caché no es persistente ni convierte datos antiguos en información actualizada.
+
 ## Fondos y terreno 3D
 
-`MapLayers` permite elegir Plano/Satélite en todos los modos; en físico añade Colores de altitud y Terreno y edificios 3D. El sombreado permanece en el plano físico, sin otro interruptor. Los ajustes consumen `MapAppearance`, no `PhysicalFilter`. En móvil el botón ocupa el comienzo de la fila de filtros para quedar fuera de la hoja, incluso completamente abierta; el desplegable queda encima de la hoja y debajo de búsqueda/diálogos. Escape devuelve el foco al botón.
+`MapLayers` permite elegir Plano/Satélite en todos los modos; en físico añade Colores de altitud y Terreno y edificios 3D. El sombreado permanece en el plano físico, sin otro interruptor. Los ajustes consumen `MapAppearance`, no `PhysicalFilter`. En móvil el botón queda a la izquierda del cambio de modo, antes de la hoja incluso en pantallas de 568 px de altura. En horizontal con altura ≤520 px ocupa un hueco reservado en la cabecera. El desplegable queda encima de la hoja y debajo de búsqueda/diálogos. Escape devuelve el foco al botón.
 
 `buildStyle(mode, basemap)` reutiliza las fuentes vectoriales, DEM y GeoJSON. Para satélite oculta las superficies opacas del plano y su sombreado; coloca los raster después del fondo y antes de hipsometría, edificios y entidades/etiquetas. Las geometrías, selección y colores de altitud permanecen independientes. No hay un segundo motor ni cambio de backend.
 
