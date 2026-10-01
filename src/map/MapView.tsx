@@ -10,7 +10,7 @@ import { APP_VERSION } from '../version'
 import { viewportPadding } from './viewport-padding'
 import { CollapsedAttributionControl } from './attribution-control'
 import { PHYSICAL_FILTER_KINDS, physicalSelectionFilter } from './physical'
-import { fitEntityBounds, SelectionFocusController } from './selection-focus'
+import { fitEntityBounds, focusPoint, SelectionFocusController } from './selection-focus'
 
 setWorkerUrl(workerUrl)
 const ASTURIAS_CENTER: [number, number] = [-5.86, 43.31]
@@ -35,6 +35,10 @@ type Props = {
   onViewportChange: (view: ViewState) => void
   onLocateMatches: (ids: string[]) => void
   onToast: (message: string) => void
+}
+
+function navigationPadding(props: Props) {
+  return viewportPadding(window.innerWidth, window.visualViewport?.height ?? window.innerHeight, props.sheetLevel, props.desktopPanelCollapsed)
 }
 
 function interactiveLayers(mode: MapMode) {
@@ -211,7 +215,6 @@ export default function MapView(props: Props) {
       zoom: propsRef.current.initialView.zoom || 8,
       attributionControl: false, fadeDuration: 120, maxZoom: 17,
     })
-    map.setPadding(viewportPadding(window.innerWidth, window.innerHeight, propsRef.current.sheetLevel, propsRef.current.desktopPanelCollapsed))
     mapRef.current = map
     map.addControl(new NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
     map.addControl(new CollapsedAttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-right')
@@ -266,8 +269,6 @@ export default function MapView(props: Props) {
       const center = map.getCenter()
       propsRef.current.onViewportChange({ center: [center.lng, center.lat], zoom: map.getZoom() })
     })
-    const handleResize = () => map.setPadding(viewportPadding(window.innerWidth, window.innerHeight, propsRef.current.sheetLevel, propsRef.current.desktopPanelCollapsed))
-    window.addEventListener('resize', handleResize)
     map.on('style.load', () => {
       hideRiverTooltip()
       styleReadyRef.current = true
@@ -277,11 +278,10 @@ export default function MapView(props: Props) {
       applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
       applyCompared(map, propsRef.current.compared)
       applyUserLocation(map, propsRef.current.locateRequest)
-      focusController.current.apply(map, propsRef.current, true)
+      focusController.current.apply(map, propsRef.current, true, navigationPadding(propsRef.current))
     })
     return () => {
       window.clearTimeout(clickTimer)
-      window.removeEventListener('resize', handleResize)
       map.getCanvas().removeEventListener('mouseleave', hideRiverTooltip)
       hideRiverTooltip()
       styleReadyRef.current = false
@@ -313,10 +313,6 @@ export default function MapView(props: Props) {
     const map = mapRef.current
     if (map && styleReadyRef.current && props.mode === 'political') applyPoliticalLevel(map, props.politicalLevel)
   }, [props.politicalLevel, props.mode])
-
-  useEffect(() => {
-    mapRef.current?.setPadding(viewportPadding(window.innerWidth, window.innerHeight, props.sheetLevel, props.desktopPanelCollapsed))
-  }, [props.sheetLevel, props.desktopPanelCollapsed])
 
   useEffect(() => {
     const map = mapRef.current
@@ -372,8 +368,8 @@ export default function MapView(props: Props) {
     const map = mapRef.current
     if (!map || !styleReadyRef.current) return
     applySelection(map, props.mode, props.selected, props.transitSelection, props.relatedPhysicalIds)
-    focusController.current.apply(map, propsRef.current, true)
-  }, [props.selected, props.transitSelection, props.relatedPhysicalIds, props.mode, props.sheetLevel, props.focusRequestToken])
+    focusController.current.apply(map, propsRef.current, true, navigationPadding(propsRef.current))
+  }, [props.selected, props.transitSelection, props.relatedPhysicalIds, props.mode, props.focusRequestToken])
 
   useEffect(() => {
     const map = mapRef.current
@@ -381,17 +377,16 @@ export default function MapView(props: Props) {
     if (!map || !styleReadyRef.current) return
     applyCompared(map, props.compared)
     if (bounds && props.compared.length > 1) {
-      map.stop()
-      fitEntityBounds(map, bounds, 12)
+      fitEntityBounds(map, bounds, 12, navigationPadding(propsRef.current))
     }
-  }, [comparedKey, props.compared, props.sheetLevel])
+  }, [comparedKey, props.compared])
 
   useEffect(() => {
     const map = mapRef.current
     const request = props.locateRequest
     if (!map || !request) return
     if (styleReadyRef.current) applyUserLocation(map, request)
-    map.easeTo({ center: request.coordinates, zoom: 11, duration: 850 })
+    focusPoint(map, request.coordinates, 11, navigationPadding(propsRef.current), 850)
     if (props.mode !== 'political') return
     map.once('idle', () => {
       const point = map.project(request.coordinates)

@@ -239,9 +239,12 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
   .app.sheet-full .toast-container { bottom: calc(79vh + 8px); bottom: calc(79dvh + 8px); }
   .app .maplibregl-ctrl-top-right { top: 165px; right: 8px; }
   .app.context-open .maplibregl-ctrl-top-right { display: none; }
-  .maplibregl-ctrl-bottom-right { bottom: 43vh; bottom: 43dvh; }
-  .app.sheet-peek .maplibregl-ctrl-bottom-right { bottom: 72px; }
-  .app.sheet-full .maplibregl-ctrl-bottom-right { bottom: 79vh; bottom: 79dvh; }
+  /* Credits stay at the viewport edge, above the sheet but below dialogs.
+     Reserve their corner in the footer and the collapsed title. */
+  .app .maplibregl-ctrl-bottom-right { position: fixed; bottom: env(safe-area-inset-bottom, 0px); right: env(safe-area-inset-right, 0px); z-index: 41; max-width: calc(100vw - 20px); }
+  .app .maplibregl-ctrl-attrib { max-height: 30dvh; overflow-y: auto; }
+  .panel-footer { padding-right: calc(48px + env(safe-area-inset-right, 0px)); padding-bottom: calc(11px + env(safe-area-inset-bottom, 0px)); }
+  .side-panel.sheet-peek :is(.intro-panel, .entity-panel, .compare-panel) { padding-right: calc(48px + env(safe-area-inset-right, 0px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
