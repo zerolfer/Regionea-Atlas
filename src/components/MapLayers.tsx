@@ -56,7 +56,9 @@ export default function MapLayers({ mode, value, onChange }: Props) {
       const cardWidth = Math.min(320, width - margin * 2)
       let left = panel.left, top = panel.bottom + gap
       let maxHeight = height - margin * 2, availableWidth = cardWidth
-      if (rightSpace >= 220) {
+      // In short landscape views, a narrower scrollable card is more usable
+      // than the gap above the selector, which may only fit its heading.
+      if (rightSpace >= 180) {
         left = panel.right + gap; top = panel.top
         availableWidth = Math.min(cardWidth, rightSpace)
       } else {

@@ -5,11 +5,27 @@ import type { MapAppearance } from '../types'
 import MapLayers from './MapLayers'
 
 const value = { basemap: 'plan' as const, terrain3d: false, hypsometry: false }
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 function openSelector() {
   fireEvent.click(screen.getByRole('button', { name: 'Tipo de mapa' }))
 }
+
+it('aprovecha el lateral en horizontal para no recortar la ayuda a una sola cabecera', () => {
+  vi.stubGlobal('innerWidth', 568)
+  vi.stubGlobal('innerHeight', 320)
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    return this.classList.contains('layers-popover') ? new DOMRect(63, 64, 288, 236) : new DOMRect(0, 0, 320, 227)
+  })
+  render(<MapLayers mode="physical" value={value} onChange={vi.fn()} />)
+  openSelector()
+  fireEvent.click(screen.getByRole('button', { name: 'Información del mapa' }))
+  const help = screen.getByRole('region', { name: 'Información del mapa' })
+  const left = parseFloat(help.style.left), width = parseFloat(help.style.width)
+  expect(left).toBeGreaterThanOrEqual(361)
+  expect(left + width).toBeLessThanOrEqual(556)
+  expect(parseFloat(help.style.maxHeight)).toBeGreaterThan(180)
+})
 
 it('presenta un botón solo con icono y un selector llamado Tipo de mapa', () => {
   render(<MapLayers mode="physical" value={value} onChange={vi.fn()} />)
