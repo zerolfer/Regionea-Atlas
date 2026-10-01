@@ -37,6 +37,10 @@ El resultado de ese estudio debe quedar en una decisión de arquitectura con una
 
 ## Experiencia y calidad
 
+- Fondos y terreno 3D: [diseño propuesto](superpowers/specs/2026-10-01-basemap-terrain.md) y [plan de implementación](superpowers/plans/2026-10-01-basemap-terrain.md). Confirmar primero si el satélite mundial gratuito de 10 m de resolución cubre la expectativa visual; no confundirlo con ortofotografía urbana de alta resolución.
+- Para una fase futura, probar superposición de imágenes regionales más detalladas sobre una base mundial según cobertura/zoom, con transiciones de color y fechas explícitas. No es parte del primer bloque 3D.
+- Fotogrametría de edificios queda fuera: comenzar con extrusiones simplificadas de las geometrías y alturas disponibles de OSM.
+
 - Hacer que los mensajes introductorios del panel respondan al área visible hasta una escala razonable, sin sustituir una selección explícita de parroquia o barrio.
 - Incorporar pruebas E2E con fuentes simuladas, regresión visual en móvil/tableta/escritorio y auditoría automatizada de accesibilidad; mantener revisión manual para gestos y mapa.
 - Medir y optimizar el peso del paquete de MapLibre, actualmente separado mediante carga perezosa.
