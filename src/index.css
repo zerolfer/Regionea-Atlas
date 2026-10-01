@@ -135,15 +135,18 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .layers-popover { position: absolute; bottom: 54px; left: 0; width: 288px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 160px); overflow-y: auto; padding: 14px; background: var(--paper-strong); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 9px 30px #332b2233; }
 .layers-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
 .layers-heading h2 { margin: 0; font: inherit; font-weight: 700; }
-.layers-heading-actions { display: flex; align-items: center; gap: 2px; }
+.layers-heading-title { display: flex; align-items: center; gap: 2px; }
 .layers-heading .icon-button, .layers-information-button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; flex: none; }
 .layers-information-button { border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
-.layers-information { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: inherit; background: var(--paper-strong); }
-.layers-information-body { min-height: 0; overflow-y: auto; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.layers-information { position: fixed; z-index: 1; display: flex; flex-direction: column; gap: 8px; width: 320px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-strong); box-shadow: 0 6px 24px #332b2233; }
+.layers-information-body { min-height: 0; overflow-y: auto; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .layers-information-body p { margin: 0 0 12px; }
+.layers-information-body p:last-child { margin-bottom: 0; }
 .layers-information-body a { color: var(--accent); }
 .basemap-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 0 0; margin: 0; border: 0; }
 .basemap-options label { display: grid; gap: 8px; padding: 7px; border: 2px solid transparent; border-radius: 11px; cursor: pointer; font-size: 13px; }
+.basemap-options label > span:last-child { position: relative; text-align: center; }
+.basemap-options input { position: absolute; left: 0; top: 50%; margin: 0; transform: translateY(-50%); }
 .basemap-options label.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, white); }
 .map-layers input { accent-color: var(--accent); }
 .basemap-swatch { height: 48px; border-radius: 7px; border: 1px solid #716b6240; }

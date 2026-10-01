@@ -1,10 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, expect, it, vi } from 'vitest'
 import { useState } from 'react'
 import type { MapAppearance } from '../types'
 import MapLayers from './MapLayers'
 
 const value = { basemap: 'plan' as const, terrain3d: false, hypsometry: false }
+afterEach(() => vi.unstubAllGlobals())
 
 function openSelector() {
   fireEvent.click(screen.getByRole('button', { name: 'Tipo de mapa' }))
@@ -28,11 +29,46 @@ it('mantiene la ayuda fuera de las opciones hasta abrir Información', () => {
   const region = screen.getByRole('region', { name: 'Información del mapa' })
   expect(region).toHaveTextContent('alturas disponibles o estimadas')
   expect(screen.getByRole('link', { name: /Sentinel/ })).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: 'Satélite' })).toBeEnabled()
+  expect(screen.getByRole('radio', { name: 'Satélite' }).closest('[inert]')).toBeNull()
   expect(screen.getByRole('button', { name: 'Cerrar información' })).toHaveFocus()
   fireEvent.keyDown(region, { key: 'Escape' })
   expect(screen.queryByRole('region')).not.toBeInTheDocument()
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   expect(information).toHaveFocus()
+})
+
+it('la ayuda se puede cerrar pulsando otra vez Información sin cerrar las opciones', () => {
+  render(<MapLayers mode="physical" value={value} onChange={vi.fn()} />)
+  openSelector()
+  const information = screen.getByRole('button', { name: 'Información del mapa' })
+  fireEvent.click(information)
+  fireEvent.click(information)
+  expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+
+it('pulsar una opción fuera de la ayuda la cierra y permite seguir usando el selector', () => {
+  render(<MapLayers mode="physical" value={value} onChange={vi.fn()} />)
+  openSelector()
+  fireEvent.click(screen.getByRole('button', { name: 'Información del mapa' }))
+  fireEvent.pointerDown(screen.getByRole('radio', { name: 'Plano' }))
+  expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+
+it('adapta la instrucción a la interacción principal y reacciona al cambiarla', () => {
+  const listeners = new Set<() => void>()
+  const media = { matches: true, addEventListener: (_: string, listener: () => void) => listeners.add(listener), removeEventListener: (_: string, listener: () => void) => listeners.delete(listener) }
+  vi.stubGlobal('matchMedia', () => media)
+  render(<MapLayers mode="physical" value={value} onChange={vi.fn()} />)
+  openSelector()
+  fireEvent.click(screen.getByRole('button', { name: 'Información del mapa' }))
+  expect(screen.getByRole('region')).toHaveTextContent('dos dedos')
+  expect(screen.getByRole('region')).not.toHaveTextContent('botón derecho')
+  act(() => { media.matches = false; listeners.forEach((listener) => listener()) })
+  expect(screen.getByRole('region')).toHaveTextContent('botón derecho')
+  expect(screen.getByRole('region')).not.toHaveTextContent('dos dedos')
 })
 
 it('al abrir enfoca el fondo seleccionado para no señalar dos tarjetas distintas', () => {

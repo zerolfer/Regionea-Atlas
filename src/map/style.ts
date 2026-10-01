@@ -488,6 +488,13 @@ export function buildStyle(mode: MapMode, basemap: MapAppearance['basemap'] = 'p
     },
   )
 
+  if (basemap === 'satellite') {
+    for (const layer of layers) {
+      if (layer.type !== 'symbol' || !layer.layout?.['text-field']) continue
+      layer.paint = { ...layer.paint, 'text-halo-color': '#ffffff', 'text-halo-width': 1, 'text-halo-blur': 0 }
+    }
+  }
+
   return { version: 8, name: `regionea-${mode}`, glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources, layers }
 }
 

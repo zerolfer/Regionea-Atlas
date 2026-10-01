@@ -2,6 +2,23 @@ import { expect, it } from 'vitest'
 import { expression, featureFilter, validateStyleMin } from '@maplibre/maplibre-gl-style-spec'
 import { buildStyle } from './style'
 
+it('las etiquetas satelitales tienen un halo blanco fino sin alterar las etiquetas del plano', () => {
+  for (const mode of ['physical', 'political', 'transit'] as const) {
+    const satellite = buildStyle(mode, 'satellite')
+    expect(validateStyleMin(satellite)).toEqual([])
+    const labels = satellite.layers.filter((layer) => layer.type === 'symbol' && layer.layout?.['text-field'])
+    expect(labels.length).toBeGreaterThan(0)
+    for (const label of labels) {
+      if (label.type !== 'symbol') continue
+      expect(label.paint?.['text-halo-color']).toBe('#ffffff')
+      expect(label.paint?.['text-halo-width']).toBe(1)
+      expect(label.paint?.['text-halo-blur']).toBe(0)
+    }
+    const plainLabel = buildStyle(mode, 'plan').layers.find((layer) => layer.type === 'symbol' && layer.layout?.['text-field'])!
+    if (plainLabel.type === 'symbol') expect(plainLabel.paint?.['text-halo-color']).not.toBe('#ffffff')
+  }
+})
+
 it('no solicita imágenes satelitales en plano y mantiene un respaldo mundial bajo el detalle', () => {
   for (const mode of ['physical', 'political', 'transit'] as const) {
     expect(buildStyle(mode, 'plan').sources['satellite-detail']).toBeUndefined()
