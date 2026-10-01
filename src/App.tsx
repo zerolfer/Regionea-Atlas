@@ -7,6 +7,7 @@ import DetailsSheet from './components/DetailsSheet'
 import PanelHeader from './components/PanelHeader'
 import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
+import MapLayers from './components/MapLayers'
 import SearchBox from './components/SearchBox'
 import InstallPrompt from './components/InstallPrompt'
 import Toast from './components/Toast'
@@ -22,7 +23,7 @@ import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalL
 const MapView = lazy(() => import('./map/MapView'))
 const MODE_PATHS: Record<MapMode, string> = { political: 'politico', physical: 'fisico', transit: 'transporte' }
 const FILTER_LABELS: Record<PhysicalFilter, string> = {
-  relief: 'Relieve', peaks: 'Picos', hydrography: 'Ríos y agua', valleys: 'Valles', coast: 'Costa', protected: 'Espacios protegidos',
+  relief: 'Sierras', peaks: 'Picos', hydrography: 'Ríos y agua', valleys: 'Valles', coast: 'Costa', protected: 'Espacios protegidos',
   hypsometry: 'Colores de altitud', terrain3d: 'Relieve 3D',
 }
 const POLITICAL_LEVEL_LABELS: Record<PoliticalLevel, string> = {
@@ -74,6 +75,11 @@ export default function App() {
   const [compareOpen, setCompareOpen] = useState(false)
   const [contextIds, setContextIds] = useState<string[]>([])
   const [physicalFilters, setPhysicalFilters] = useState(initial.filters)
+  const [appearance, setAppearance] = useState(initial.appearance)
+  // Temporary compatibility for the renderer; presentation no longer lives in UI filters.
+  const rendererFilters = useMemo(() => new Set<PhysicalFilter>([
+    ...physicalFilters, ...(appearance.hypsometry ? ['hypsometry' as const] : []), ...(appearance.terrain3d ? ['terrain3d' as const] : []),
+  ]), [physicalFilters, appearance.hypsometry, appearance.terrain3d])
   const [politicalLevel, setPoliticalLevel] = useState<PoliticalLevel>(initial.politicalLevel)
   const [view, setView] = useState<ViewState>(initial.view)
   const [externalViewRequest, setExternalViewRequest] = useState<{ view: ViewState; token: number } | null>(null)
@@ -196,7 +202,8 @@ export default function App() {
       const params = new URLSearchParams()
       if (selectedId) params.set('seleccion', selectedId)
       if (compareIds.length) params.set('comparar', compareIds.join(','))
-      if (mode === 'physical' && !isDefaultPhysicalFilterSet(physicalFilters)) params.set('filtros', [...physicalFilters].join(','))
+      if (appearance.basemap === 'satellite') params.set('fondo', 'satelite')
+      if (mode === 'physical' && (!isDefaultPhysicalFilterSet(physicalFilters) || appearance.hypsometry || appearance.terrain3d)) params.set('filtros', [...rendererFilters].join(','))
       if (mode === 'political' && politicalLevel !== 'auto') params.set('nivel', politicalLevel)
       if (mode === 'transit') {
         if (transitFilters.providers.size && transitFilters.providers.size !== transitCatalog.providers.length) params.set('fuentes', [...transitFilters.providers].join(','))
@@ -206,10 +213,12 @@ export default function App() {
       params.set('lng', view.center[0].toFixed(4))
       params.set('lat', view.center[1].toFixed(4))
       params.set('z', view.zoom.toFixed(2))
+      if (view.pitch) params.set('pitch', view.pitch.toFixed(1))
+      if (view.bearing) params.set('bearing', view.bearing.toFixed(1))
       window.history.replaceState({}, '', `/mapa/${MODE_PATHS[mode]}?${params.toString()}`)
     }, 220)
     return () => window.clearTimeout(timer)
-  }, [mode, selectedId, compareIds, physicalFilters, politicalLevel, transitCatalog.modes.length, transitCatalog.providers.length, transitFilters, view])
+  }, [mode, selectedId, compareIds, physicalFilters, rendererFilters, appearance, politicalLevel, transitCatalog.modes.length, transitCatalog.providers.length, transitFilters, view])
 
   useEffect(() => {
     const onPopState = () => {
@@ -218,6 +227,7 @@ export default function App() {
       setSelectedId(next.selectedId)
       setCompareIds(next.compareIds)
       setPhysicalFilters(next.filters)
+      setAppearance(next.appearance)
       setPoliticalLevel(next.politicalLevel)
       setTransitFilters({ providers: next.transitProviders, modes: next.transitModes, showRealtime: next.showRealtime })
       setView(next.view)
@@ -351,7 +361,7 @@ export default function App() {
           transitSelection={transitSelection}
           compared={compareOpen ? compared : []}
           relatedPhysicalIds={relatedPhysicalIds}
-          physicalFilters={physicalFilters}
+          physicalFilters={rendererFilters}
           transitFilters={transitFilters}
           politicalLevel={politicalLevel}
           locateRequest={locateRequest}
@@ -420,6 +430,7 @@ export default function App() {
         <button className={transitFilters.showRealtime ? 'active' : ''} aria-pressed={transitFilters.showRealtime} onClick={() => setTransitFilters((current) => ({ ...current, showRealtime: !current.showRealtime }))}>Tiempo real</button>
       </div>}
       <ModeSwitch value={mode} onChange={setMode} />
+      <MapLayers mode={mode} value={appearance} onChange={setAppearance} />
 
       {compareIds.length > 0 && <button className="compare-fab" onClick={() => setCompareOpen(true)}><span>{compareIds.length}</span> Comparar</button>}
 

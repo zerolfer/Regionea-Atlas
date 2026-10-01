@@ -1,4 +1,5 @@
 export type MapMode = 'political' | 'physical' | 'transit'
+export type MapAppearance = { basemap: 'plan' | 'satellite'; hypsometry: boolean; terrain3d: boolean }
 export type BottomSheetLevel = 'peek' | 'half' | 'full'
 export type PoliticalLevel = 'auto' | 'countries' | 'communities' | 'provinces' | 'comarcas' | 'concejos' | 'parishes' | 'neighborhoods'
 
@@ -150,6 +151,8 @@ export type MapSelection =
 export type ViewState = {
   center: [number, number]
   zoom: number
+  pitch?: number
+  bearing?: number
 }
 
 export type UserLocation = {

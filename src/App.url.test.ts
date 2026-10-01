@@ -13,7 +13,7 @@ describe('estado compartible del atlas', () => {
     expect(state.compareIds).toEqual(['a', 'b', 'c'])
     expect([...state.filters]).toEqual(['peaks', 'coast'])
     expect(state.politicalLevel).toBe('concejos')
-    expect(state.view).toEqual({ center: [-5.67, 43.54], zoom: 10.25 })
+    expect(state.view).toEqual({ center: [-5.67, 43.54], zoom: 10.25, pitch: 0, bearing: 0 })
   })
 
   it('ignora filtros desconocidos y usa Asturias como vista segura', () => {
@@ -22,12 +22,12 @@ describe('estado compartible del atlas', () => {
 
     expect(state.mode).toBe('political')
     expect([...state.filters]).toEqual([])
-    expect(state.view).toEqual({ center: [-5.86, 43.31], zoom: 8 })
+    expect(state.view).toEqual({ center: [-5.86, 43.31], zoom: 8, pitch: 0, bearing: 0 })
   })
 
   it('no interpreta la ausencia de parámetros como coordenadas 0/0', () => {
     window.history.replaceState({}, '', '/mapa/politico')
-    expect(parseInitialUrl().view).toEqual({ center: [-5.86, 43.31], zoom: 8 })
+    expect(parseInitialUrl().view).toEqual({ center: [-5.86, 43.31], zoom: 8, pitch: 0, bearing: 0 })
   })
 
   it('restaura el nivel manual de barrios', () => {
@@ -48,6 +48,24 @@ describe('estado compartible del atlas', () => {
     expect([...state.transitModes]).toEqual(['bus', 'rail'])
     expect(state.showRealtime).toBe(false)
   })
+})
+
+it('separa ajustes de presentación de filtros geográficos en enlaces antiguos', () => {
+  window.history.replaceState({}, '', '/mapa/fisico?fondo=satelite&filtros=peaks,hypsometry,terrain3d&pitch=74&bearing=125')
+  const state = parseInitialUrl()
+  expect(state.appearance).toEqual({ basemap: 'satellite', hypsometry: true, terrain3d: true })
+  expect([...state.filters]).toEqual(['peaks'])
+  expect(state.view).toMatchObject({ pitch: 74, bearing: 125 })
+})
+
+it('acota cámaras compartidas y conserva enlaces 3D sin inclinación explícita', () => {
+  window.history.replaceState({}, '', '/mapa/fisico?filtros=terrain3d&pitch=999&bearing=no')
+  expect(parseInitialUrl().view).toMatchObject({ pitch: 80, bearing: 0 })
+  window.history.replaceState({}, '', '/mapa/fisico?filtros=terrain3d')
+  expect(parseInitialUrl().view.pitch).toBe(60)
+  window.history.replaceState({}, '', '/mapa/transporte?fondo=unknown&pitch=70')
+  expect(parseInitialUrl().appearance.basemap).toBe('plan')
+  expect(parseInitialUrl().view.pitch).toBe(0)
 })
 
 it('keeps optional elevation layers disabled in the default physical view', () => {
