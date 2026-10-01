@@ -8,7 +8,7 @@
 
 **Tech Stack:** React 19, TypeScript, MapLibre 6, Vitest y navegador de pruebas.
 
-**Spec:** [Diseño y fuentes](../specs/2026-10-01-basemap-terrain.md). Pendiente confirmar resolución satelital antes de ejecutar.
+**Spec:** [Diseño y fuentes](../specs/2026-10-01-basemap-terrain.md). Resolución satelital aprobada el 2026-10-01.
 
 ## Global Constraints
 
@@ -29,7 +29,7 @@
 
 ---
 
-### Task 1: Estado compartible y selector
+### Task 1: Estado compartible y selector — completada
 
 **Files:** `src/types.ts`, `src/url-state.ts`, `src/App.tsx`, `src/map/physical.ts`, `src/index.css`; crear `src/components/MapLayers.tsx` y su prueba; ampliar `src/App.url.test.ts`.
 
@@ -46,7 +46,7 @@
 - [ ] Repetir las pruebas y confirmar que pasan.
 - [ ] Commit: `feat: separate basemap appearance from geographic filters`.
 
-### Task 2: Renderizado y cámara
+### Task 2: Renderizado y cámara — completada
 
 **Files:** `src/map/style.ts`, `src/map/MapView.tsx`; crear `src/map/basemap.test.ts`; ampliar `src/map/MapView.test.tsx`.
 
@@ -78,3 +78,13 @@
 ## Auto-revisión
 
 Los requisitos están cubiertos por las tres tareas; los cinco riesgos tienen comprobaciones asignadas. No introduce backend ni trabajo fotogramétrico. Recomendada ejecución nativa: interfaz, estado y MapLibre están estrechamente relacionados y no precisan implementadores paralelos.
+
+## Resultados de implementación, 2026-10-01
+
+- Task 1: pruebas URL/selector RED (5 fallos esperados) → GREEN; suite completa 72/72, validación de datos, lint y build correctos. Commit `a08b67a`.
+- Task 2: pruebas de estilos/cámara RED (4 fallos esperados) → GREEN; regresiones adicionales para cambios tras restaurar URL, inclinación cero explícita y registro de errores ajenos al satélite. Suite completa 80/80, validadores, lint y build correctos. Commit `30c558e`.
+- Navegador real: montaña satelital a 74°, edificios de Gijón a 70°, fondos político/transporte, búsqueda de Pico Urriellu con navegación conservando orientación, hoja en sus tres estados sin modificar cámara y selector manejable mediante teclado/Escape.
+- QA responsive: 1280×720, 850×720 y 390×844. Corregido solapamiento inicial del botón Capas con la hoja móvil abierta; queda a 116–160 px, antes del tope superior de la hoja (177 px). En escritorio estrecho queda por encima del cambio de modo. Atribución sigue anclada abajo.
+- Caída simulada de Terrascope: imagen general NASA visible, terreno y entidades conservados, un aviso sin reiniciar cámara. Restaurada la red de la pestaña de prueba.
+- Limitaciones de verificación: el gesto multitáctil se mantiene en MapLibre, pero requiere revisión manual en un dispositivo físico; imagen de 10 m no aporta detalle urbano adicional al ampliar. Advertencia conocida de tamaño del chunk MapLibre en build, sin errores de compilación.
+- Task 3: documentación actualizada; revisión independiente y entrega pendientes. Sin merge ni push.

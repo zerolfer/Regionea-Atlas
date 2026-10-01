@@ -263,11 +263,23 @@ Paths: `/mapa/politico`, `/mapa/fisico`, `/mapa/transporte`.
 | `fuentes` | proveedores de transporte activos |
 | `transportes` | medios activos |
 | `tiempoReal=0` | oculta tiempo real |
-| `lng`, `lat`, `z` | cámara |
+| `fondo=satelite` | imagen satelital; ausente o desconocido equivale a plano |
+| `lng`, `lat`, `z` | centro y zoom de cámara |
+| `pitch`, `bearing` | inclinación y orientación en grados |
 
 La selección de transporte no se restaura actualmente desde `seleccion`: el parser solo resuelve ese parámetro contra `entitiesById`. Es una limitación conocida.
 
-Los valores físicos reconocidos son `relief`, `peaks`, `hydrography`, `valleys`, `coast`, `protected`, `hypsometry` y `terrain3d`. El estado predeterminado contiene relieve, picos, hidrografía, costa y espacios protegidos; hipsometría y 3D requieren activación explícita. La interfaz solo ofrece filtros de entidades si el catálogo contiene tipos asociados según `PHYSICAL_FILTER_KINDS`: Valles queda oculto mientras no haya datos. Se sigue aceptando `valleys` en URLs antiguas. `filtros=` representa todos los filtros desactivados, no los predeterminados.
+`PhysicalFilter` contiene exclusivamente `relief` (Sierras), `peaks`, `hydrography`, `valleys`, `coast` y `protected`. El estado predeterminado activa sierras, picos, hidrografía, costa y espacios protegidos. La interfaz solo ofrece filtros de entidades si el catálogo contiene tipos asociados según `PHYSICAL_FILTER_KINDS`: Valles queda oculto mientras no haya datos. Se sigue aceptando `valleys` en URLs antiguas. `filtros=` representa todos los filtros desactivados, no los predeterminados.
+
+`MapAppearance = { basemap: 'plan' | 'satellite'; hypsometry: boolean; terrain3d: boolean }` es estado de presentación independiente. Su valor inicial es plano sin colores de altitud ni 3D. El fondo se aplica en todos los modos; altitud, terreno y edificios 3D solo en físico. Para conservar URLs publicadas, `hypsometry` y `terrain3d` se leen y escriben dentro de `filtros`, pero el parser los separa y nunca los entrega como filtros de entidades.
+
+`ViewState` añade `pitch?: number` y `bearing?: number`. La inclinación restaurada se limita a 0–80°; un enlace físico antiguo con `terrain3d` sin inclinación usa 60°, mientras que los demás comienzan a 0°. La orientación se normaliza a −180–180°. La serialización incluye `pitch=0.0` cuando el 3D está activo y la cámara está cenital: omitirlo restauraría incorrectamente 60°. Centro, zoom, inclinación y orientación proceden de los eventos de MapLibre, no se recalculan al mover el panel ni al cambiar filtros o fondo.
+
+## Fondos externos y edificios
+
+Las fuentes raster se declaran en `src/map/basemap.ts`, fuera de los contratos GeoJSON y del manifiesto del atlas. Solo se solicitan al elegir satélite. El selector y las atribuciones indican proveedor, fecha y resolución; su disponibilidad depende de servicios públicos externos sin garantía de continuidad. El respaldo NASA permanece debajo del detalle, no sustituye ni elimina entidades del atlas.
+
+Los edificios son extrusiones del `source-layer: building` de OpenMapTiles: `hide_3d=true` excluye una parte, `render_height` determina altura y `render_min_height` su base. Un valor ausente o no numérico se trata como 0, sin inventar una altura en el cliente; los valores publicados por el proveedor pueden ser estimados. Se muestran desde zoom 14 únicamente con 3D físico. No son fotogrametría ni edificios con fachadas fotografiadas. Fuentes, licencias, límites WMTS y procedimiento de sustitución se describen en [arquitectura](architecture.md#fondos-y-terreno-3d).
 
 ## Evolución de contratos
 

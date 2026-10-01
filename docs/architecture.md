@@ -32,7 +32,7 @@ El cliente no consulta directamente las fuentes administrativas ni usa claves. C
 
 `src/App.tsx` compone la aplicación y mantiene:
 
-- modo, selección, comparación y filtros;
+- modo, selección, comparación, filtros geográficos y apariencia del fondo;
 - cámara sincronizada con la URL;
 - catálogo de búsqueda;
 - geolocalización en memoria;
@@ -65,7 +65,7 @@ Las relaciones de ascendencia se recorren con `parentId`. El comparador admite h
 
 ### Físico
 
-Hay una colección de contexto europeo, una de detalle asturiano y una de superficies costeras españolas, además de colecciones derivadas de etiquetas. Los filtros de contenido son relieve, picos, hidrografía, valles, costa y espacios protegidos. La hipsometría y el terreno 3D son visualizaciones opcionales, desactivadas por defecto y persistidas en la URL. Sombreado, hipsometría y terreno usan instancias DEM separadas para evitar degradar el renderizado.
+Hay una colección de contexto europeo, una de detalle asturiano y una de superficies costeras españolas, además de colecciones derivadas de etiquetas. Los filtros de contenido son sierras, picos, hidrografía, valles, costa y espacios protegidos. La hipsometría y el terreno 3D son ajustes independientes del selector Capas, desactivados por defecto y persistidos en la URL. Sombreado, hipsometría y terreno usan instancias DEM separadas para evitar degradar el renderizado.
 
 `scripts/sync-physical-coast.mjs` enriquece el detalle con rías, islas, cabos, bahías y playas oficiales de SITPA. Los símbolos costeros aparecen progresivamente para no saturar escalas regionales.
 
@@ -78,6 +78,25 @@ La relación entre una sierra seleccionada y sus picos se calcula actualmente en
 El snapshot contiene rutas, paradas, calendarios y salidas por parada. Los filtros actúan por proveedor, medio y visibilidad del tiempo real. Una selección atenúa el resto de la red.
 
 El endpoint de salidas combina el calendario estático con actualizaciones GTFS-Realtime de Renfe cuando puede relacionarlas. Si la API falla, el cliente intenta cargar el JSON estático de la parada.
+
+## Fondos y terreno 3D
+
+`MapLayers` permite elegir Plano/Satélite en todos los modos; en físico añade Colores de altitud y Terreno y edificios 3D. El sombreado permanece en el plano físico, sin otro interruptor. Los ajustes consumen `MapAppearance`, no `PhysicalFilter`. En móvil el botón ocupa el comienzo de la fila de filtros para quedar fuera de la hoja, incluso completamente abierta; el desplegable queda encima de la hoja y debajo de búsqueda/diálogos. Escape devuelve el foco al botón.
+
+`buildStyle(mode, basemap)` reutiliza las fuentes vectoriales, DEM y GeoJSON. Para satélite oculta las superficies opacas del plano y su sombreado; coloca los raster después del fondo y antes de hipsometría, edificios y entidades/etiquetas. Las geometrías, selección y colores de altitud permanecen independientes. No hay un segundo motor ni cambio de backend.
+
+Fuentes comprobadas el 2026-10-01:
+
+| Fuente | Uso | Límites y atribución |
+|---|---|---|
+| NASA GIBS Blue Marble Next Generation | vista general y respaldo permanente debajo del detalle | imagen 2004, aproximadamente 500 m; fuente limitada a zoom 5 y ampliada en zooms mayores cuando falta detalle; [uso de datos NASA](https://www.earthdata.nasa.gov/engage/open-data-services-software/data-use-policy) |
+| ESA WorldCover Sentinel-2, compuesto de color natural | detalle de paisaje | 2021, 10 m; latitudes −60° a 83°, matrices WMTS 6–14, CC BY 4.0; [datos ESA](https://esa-worldcover.org/en/data-access), [WMTS público Terrascope](https://docs.terrascope.be/Developers/WebServices/OGC/WMTSv2.html) |
+
+Las plantillas y atribuciones exactas viven en `src/map/basemap.ts`. Se usa GetTile por parámetros para Terrascope porque la plantilla REST anunciada no respondió correctamente en la comprobación. No requieren claves ni cuentas. Las [condiciones de Terrascope](https://terrascope.be/en/terms-use) no garantizan disponibilidad y prohíben degradar el servicio con carga elevada: no se precachean conjuntos de teselas ni se promete capacidad ilimitada. Una caída de detalle deja visible NASA y muestra un aviso una vez por carga de estilo; errores ajenos a esa fuente siguen registrados. La imagen no equivale a ortofotografía urbana de alta resolución.
+
+La cámara admite hasta 80°. Al activar 3D desde una vista casi cenital se anima a 60°, respetando movimiento reducido; al desactivarlo vuelve a cenital. Cambiar filtros o fondo no modifica cámara. Una restauración explícita de URL prevalece sobre esa animación y conserva incluso `pitch=0` en 3D. MapLibre mantiene el centro/orientación durante `setStyle`; al recibir `style.load` se reaplican capas, terreno y selección. Las extrusiones OSM aparecen desde zoom 14, con alturas disponibles o estimadas por el proveedor; las ausentes no se inventan en el cliente.
+
+Para sustituir o ampliar el proveedor: verificar primero licencia, CORS, límites de cobertura/zoom, atribución, fecha, resolución y cuotas; actualizar `basemap.ts`, las capas raster de `style.ts` y las notas del selector. Mantener la API `MapAppearance` y la URL, salvo migración documentada. Ampliar `basemap.test.ts` (validación real de estilos, orden, límites y exclusión de raster en plano), probar la caída de detalle y una tesela real, y repetir QA móvil/escritorio. Las superposiciones regionales más detalladas y la fotogrametría están pospuestas: no hay cambio automático de fuentes según el centro del mapa.
 
 ## API serverless
 
@@ -122,6 +141,7 @@ vercel.json                   build, rewrites y cron
 
 - OpenFreeMap/OpenMapTiles: fondo vectorial y glifos.
 - Mapzen Terrain Tiles en AWS Open Data: sombreado, hipsometría y relieve 3D.
+- NASA GIBS y ESA WorldCover/Terrascope: imágenes satelitales cuando se elige ese fondo.
 - Renfe GTFS-Realtime: tres feeds protobuf, salvo URL alternativa configurada.
 - Vercel Analytics: componente cargado por el frontend.
 

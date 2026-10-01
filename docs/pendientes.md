@@ -37,7 +37,7 @@ El resultado de ese estudio debe quedar en una decisión de arquitectura con una
 
 ## Experiencia y calidad
 
-- Fondos y terreno 3D: [diseño propuesto](superpowers/specs/2026-10-01-basemap-terrain.md) y [plan de implementación](superpowers/plans/2026-10-01-basemap-terrain.md). Confirmar primero si el satélite mundial gratuito de 10 m de resolución cubre la expectativa visual; no confundirlo con ortofotografía urbana de alta resolución.
+- Fondos y terreno 3D implementados en la rama `codex/basemap-terrain`, pendientes de revisión manual e integración: [diseño aprobado](superpowers/specs/2026-10-01-basemap-terrain.md) y [plan/resultados](superpowers/plans/2026-10-01-basemap-terrain.md). La resolución gratuita de 10 m fue aceptada para este primer bloque; no equivale a ortofotografía urbana de alta resolución.
 - Para una fase futura, probar superposición de imágenes regionales más detalladas sobre una base mundial según cobertura/zoom, con transiciones de color y fechas explícitas. No es parte del primer bloque 3D.
 - Fotogrametría de edificios queda fuera: comenzar con extrusiones simplificadas de las geometrías y alturas disponibles de OSM.
 

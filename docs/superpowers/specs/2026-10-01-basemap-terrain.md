@@ -1,6 +1,6 @@
 # Fondos y terreno 3D
 
-Estado: diseño de interacción acordado; pendiente confirmar que la resolución de la fuente satelital propuesta encaja con la expectativa del usuario. No hay cambios funcionales publicados.
+Estado: diseño y resolución aprobados por el usuario el 2026-10-01; implementado en `codex/basemap-terrain`, pendiente de revisión manual e integración. No hay cambios funcionales publicados.
 
 ## Experiencia acordada
 
