@@ -51,6 +51,8 @@ No hay gestor global de estado ni router externo. El path y `history.pushState`/
 
 La cabecera crea un contexto de apilamiento propio. Cuando el buscador abre resultados, se eleva temporalmente a `z-index: 46`, por encima de la hoja móvil (40) y el selector contextual (45), pero por debajo de los diálogos (50). Al cerrar los resultados recupera su prioridad habitual; buscar no cambia el estado de apertura de la hoja.
 
+`DetailsDock` añade el acople del panel de escritorio: una pestaña lateral lo pliega sin desmontar la ficha ni perder su desplazamiento. Mientras está plegado, el contenido es `inert` (no recibe foco ni interacción); una nueva selección no lo abre. Al pasar a móvil se elimina ese bloqueo y se conserva la hoja inferior existente, independientemente del acople de escritorio. El panel llega al borde inferior; los filtros se ajustan a su contenido y tienen desplazamiento horizontal si no caben. El margen de MapLibre se calcula en `src/map/viewport-padding.ts` y coincide con el ancho responsive del panel o con el espacio liberado al plegarlo. El acople es estado de interfaz de la sesión, no un parámetro compartible de la URL.
+
 ## Modos del mapa
 
 ### Político

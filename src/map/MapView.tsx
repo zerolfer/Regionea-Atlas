@@ -7,20 +7,12 @@ import { buildStyle, PHYSICAL_INTERACTIVE_LAYERS, POLITICAL_INTERACTIVE_LAYERS, 
 import { geometryBounds } from '../data/transit'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
-import { bottomSheetHeight } from '../bottom-sheet'
+import { viewportPadding } from './viewport-padding'
 import { PHYSICAL_FILTER_KINDS, physicalSelectionFilter } from './physical'
 import { fitEntityBounds, SelectionFocusController } from './selection-focus'
 
 setWorkerUrl(workerUrl)
 const ASTURIAS_CENTER: [number, number] = [-5.86, 43.31]
-
-function viewportPadding(sheetLevel: BottomSheetLevel = 'half') {
-  const mobileBottom = bottomSheetHeight(sheetLevel, window.innerHeight) + 12
-  const desktopPanel = Math.min(396, (window.innerWidth - 54) / 2) + 36
-  return window.innerWidth > 760
-    ? { top: 84, right: 36, bottom: 72, left: desktopPanel }
-    : { top: 82, right: 18, bottom: mobileBottom, left: 18 }
-}
 
 type Props = {
   mode: MapMode
@@ -33,6 +25,7 @@ type Props = {
   politicalLevel: PoliticalLevel
   locateRequest: UserLocation | null
   sheetLevel: BottomSheetLevel
+  desktopPanelCollapsed: boolean
   initialView: ViewState
   externalViewRequest: { view: ViewState; token: number } | null
   focusRequestToken: number
@@ -217,7 +210,7 @@ export default function MapView(props: Props) {
       zoom: propsRef.current.initialView.zoom || 8,
       attributionControl: false, fadeDuration: 120, maxZoom: 17,
     })
-    map.setPadding(viewportPadding(propsRef.current.sheetLevel))
+    map.setPadding(viewportPadding(window.innerWidth, window.innerHeight, propsRef.current.sheetLevel, propsRef.current.desktopPanelCollapsed))
     mapRef.current = map
     map.addControl(new NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
     map.addControl(new AttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-right')
@@ -272,7 +265,7 @@ export default function MapView(props: Props) {
       const center = map.getCenter()
       propsRef.current.onViewportChange({ center: [center.lng, center.lat], zoom: map.getZoom() })
     })
-    const handleResize = () => map.setPadding(viewportPadding(propsRef.current.sheetLevel))
+    const handleResize = () => map.setPadding(viewportPadding(window.innerWidth, window.innerHeight, propsRef.current.sheetLevel, propsRef.current.desktopPanelCollapsed))
     window.addEventListener('resize', handleResize)
     map.on('style.load', () => {
       hideRiverTooltip()
@@ -321,8 +314,8 @@ export default function MapView(props: Props) {
   }, [props.politicalLevel, props.mode])
 
   useEffect(() => {
-    mapRef.current?.setPadding(viewportPadding(props.sheetLevel))
-  }, [props.sheetLevel])
+    mapRef.current?.setPadding(viewportPadding(window.innerWidth, window.innerHeight, props.sheetLevel, props.desktopPanelCollapsed))
+  }, [props.sheetLevel, props.desktopPanelCollapsed])
 
   useEffect(() => {
     const map = mapRef.current

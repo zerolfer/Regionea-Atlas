@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import ComparePanel from './components/ComparePanel'
+import DetailsDock from './components/DetailsDock'
 import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
 import SearchBox from './components/SearchBox'
@@ -78,6 +79,7 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const [sheetLevel, setSheetLevel] = useState<BottomSheetLevel>('half')
+  const [desktopPanelCollapsed, setDesktopPanelCollapsed] = useState(false)
   const [transitDatasetStatus, setTransitDatasetStatus] = useState<TransitFreshness>('demo')
   const [transitCatalog, setTransitCatalog] = useState<TransitCatalog>({ items: [], providers: [], modes: [] })
   const [transitFilters, setTransitFilters] = useState<TransitFilters>({
@@ -399,6 +401,7 @@ export default function App() {
           politicalLevel={politicalLevel}
           locateRequest={locateRequest}
           sheetLevel={sheetLevel}
+          desktopPanelCollapsed={desktopPanelCollapsed}
           initialView={initial.view}
           externalViewRequest={externalViewRequest}
           focusRequestToken={focusRequestToken}
@@ -419,45 +422,47 @@ export default function App() {
         <button className="location-button" onClick={() => locate()}><span aria-hidden="true">⌾</span><span>Ver mi territorio</span></button>
       </header>
 
-      <aside
-        className={`side-panel sheet-${sheetLevel} ${sheetDragHeight != null ? 'is-dragging' : ''} ${selected || transitSelection || compareOpen ? 'has-content' : ''}`}
-        style={sheetDragHeight == null ? undefined : { '--sheet-drag-height': `${sheetDragHeight}px` } as CSSProperties}
-      >
-        <button
-          className="sheet-handle"
-          onClick={() => { if (!suppressSheetClick.current) cycleSheetLevel() }}
-          onPointerDown={startSheetDrag}
-          onPointerMove={moveSheetDrag}
-          onPointerUp={endSheetDrag}
-          onPointerCancel={endSheetDrag}
-          aria-label={`Panel ${sheetLevel === 'peek' ? 'mínimo; ampliar' : sheetLevel === 'half' ? 'medio; ampliar' : 'completo; reducir'}`}
-        ><span /></button>
-        <div className="panel-scroll">
-          {loadingError && <div className="error-state"><strong>No se pudo abrir el catálogo.</strong><p>{loadingError}</p></div>}
-          {!selected && !transitSelection && !compareOpen && (
-            <section className="intro-panel">
-              <span className="eyebrow">{intro.kicker}</span><h1>{intro.title}</h1><p>{intro.text}</p>
-              {mode === 'transit' && <div className="demo-notice"><strong>{TRANSIT_STATUS_COPY[transitDatasetStatus].title}</strong><span>{TRANSIT_STATUS_COPY[transitDatasetStatus].text}</span></div>}
-              <div className="coverage-summary">
-                <div><strong>{atlas?.manifest.collections.concejos?.count || '—'}</strong><span>concejos</span></div>
-                <div><strong>{atlas?.manifest.collections.parishes?.count || '—'}</strong><span>parroquias</span></div>
-                <div><strong>{atlas?.manifest.collections.neighborhoods?.count || '—'}</strong><span>barrios</span></div>
-              </div>
-            </section>
-          )}
-          {!compareOpen && selected && <EntityPanel entity={selected} editorial={atlas?.editorial[selected.id]} source={source} datasetDate={atlas?.manifest.generatedAt} parent={parent} ancestors={ancestors} related={relatedPeaks} compared={compareIds.includes(selected.id)} onNavigate={selectEntity} onCompare={() => toggleCompare(selected)} onClose={() => setSelectedId(null)} />}
-          {!compareOpen && transitSelection && (
-            <article className="entity-panel transit-detail">
-              <div className="panel-kicker-row"><span className="eyebrow">{transitSelection.type === 'stop' ? 'Parada' : transitSelection.type === 'route' ? 'Línea' : 'Vehículo'}</span><button className="icon-button" onClick={() => setTransitSelection(null)} aria-label="Cerrar ficha de transporte">×</button></div>
-              <h1>{transitSelection.name}</h1><p className="local-name">{transitSelection.provider}</p>
-              <div className="demo-notice"><strong>{TRANSIT_STATUS_COPY[transitSelection.freshness].title}</strong><span>{TRANSIT_STATUS_COPY[transitSelection.freshness].text}</span></div>
-              {transitSelection.type === 'stop' && <section className="departures"><h2>Próximas salidas</h2>{departures.length ? departures.map((departure, index) => <div key={`${departure.route}-${departure.scheduledTime}-${departure.destination}-${index}`}><strong>{departureTime(departure.scheduledTime)}</strong><span>{departure.route} · {departure.destination}</span><small>{departure.freshness === 'live' ? 'en vivo' : departure.freshness === 'stale' ? 'tiempo real desactualizado' : departure.freshness === 'demo' ? 'programado · demo' : 'programado'}{departure.delaySeconds ? ` · ${Math.round(departure.delaySeconds / 60)} min` : ''}</small></div>) : <p>No hay salidas cargadas.</p>}</section>}
-            </article>
-          )}
-          {compareOpen && <ComparePanel entities={compared} onRemove={(id) => setCompareIds((current) => current.filter((item) => item !== id))} onClose={() => setCompareOpen(false)} />}
-        </div>
-        <footer className="panel-footer"><button onClick={() => setSourcesOpen(true)}>Fuentes y licencias</button><span>{atlas ? `Datos ${atlas.manifest.version}` : 'Cargando datos…'}</span></footer>
-      </aside>
+      <DetailsDock onCollapsedChange={setDesktopPanelCollapsed}>
+        <aside
+          className={`side-panel sheet-${sheetLevel} ${sheetDragHeight != null ? 'is-dragging' : ''} ${selected || transitSelection || compareOpen ? 'has-content' : ''}`}
+          style={sheetDragHeight == null ? undefined : { '--sheet-drag-height': `${sheetDragHeight}px` } as CSSProperties}
+        >
+          <button
+            className="sheet-handle"
+            onClick={() => { if (!suppressSheetClick.current) cycleSheetLevel() }}
+            onPointerDown={startSheetDrag}
+            onPointerMove={moveSheetDrag}
+            onPointerUp={endSheetDrag}
+            onPointerCancel={endSheetDrag}
+            aria-label={`Panel ${sheetLevel === 'peek' ? 'mínimo; ampliar' : sheetLevel === 'half' ? 'medio; ampliar' : 'completo; reducir'}`}
+          ><span /></button>
+          <div className="panel-scroll">
+            {loadingError && <div className="error-state"><strong>No se pudo abrir el catálogo.</strong><p>{loadingError}</p></div>}
+            {!selected && !transitSelection && !compareOpen && (
+              <section className="intro-panel">
+                <span className="eyebrow">{intro.kicker}</span><h1>{intro.title}</h1><p>{intro.text}</p>
+                {mode === 'transit' && <div className="demo-notice"><strong>{TRANSIT_STATUS_COPY[transitDatasetStatus].title}</strong><span>{TRANSIT_STATUS_COPY[transitDatasetStatus].text}</span></div>}
+                <div className="coverage-summary">
+                  <div><strong>{atlas?.manifest.collections.concejos?.count || '—'}</strong><span>concejos</span></div>
+                  <div><strong>{atlas?.manifest.collections.parishes?.count || '—'}</strong><span>parroquias</span></div>
+                  <div><strong>{atlas?.manifest.collections.neighborhoods?.count || '—'}</strong><span>barrios</span></div>
+                </div>
+              </section>
+            )}
+            {!compareOpen && selected && <EntityPanel entity={selected} editorial={atlas?.editorial[selected.id]} source={source} datasetDate={atlas?.manifest.generatedAt} parent={parent} ancestors={ancestors} related={relatedPeaks} compared={compareIds.includes(selected.id)} onNavigate={selectEntity} onCompare={() => toggleCompare(selected)} onClose={() => setSelectedId(null)} />}
+            {!compareOpen && transitSelection && (
+              <article className="entity-panel transit-detail">
+                <div className="panel-kicker-row"><span className="eyebrow">{transitSelection.type === 'stop' ? 'Parada' : transitSelection.type === 'route' ? 'Línea' : 'Vehículo'}</span><button className="icon-button" onClick={() => setTransitSelection(null)} aria-label="Cerrar ficha de transporte">×</button></div>
+                <h1>{transitSelection.name}</h1><p className="local-name">{transitSelection.provider}</p>
+                <div className="demo-notice"><strong>{TRANSIT_STATUS_COPY[transitSelection.freshness].title}</strong><span>{TRANSIT_STATUS_COPY[transitSelection.freshness].text}</span></div>
+                {transitSelection.type === 'stop' && <section className="departures"><h2>Próximas salidas</h2>{departures.length ? departures.map((departure, index) => <div key={`${departure.route}-${departure.scheduledTime}-${departure.destination}-${index}`}><strong>{departureTime(departure.scheduledTime)}</strong><span>{departure.route} · {departure.destination}</span><small>{departure.freshness === 'live' ? 'en vivo' : departure.freshness === 'stale' ? 'tiempo real desactualizado' : departure.freshness === 'demo' ? 'programado · demo' : 'programado'}{departure.delaySeconds ? ` · ${Math.round(departure.delaySeconds / 60)} min` : ''}</small></div>) : <p>No hay salidas cargadas.</p>}</section>}
+              </article>
+            )}
+            {compareOpen && <ComparePanel entities={compared} onRemove={(id) => setCompareIds((current) => current.filter((item) => item !== id))} onClose={() => setCompareOpen(false)} />}
+          </div>
+          <footer className="panel-footer"><button onClick={() => setSourcesOpen(true)}>Fuentes y licencias</button><span>{atlas ? `Datos ${atlas.manifest.version}` : 'Cargando datos…'}</span></footer>
+        </aside>
+      </DetailsDock>
 
       {mode === 'physical' && <div className="filter-bar" aria-label="Filtros del mapa físico">{visiblePhysicalFilters.map((filter) => <button key={filter} className={physicalFilters.has(filter) ? 'active' : ''} aria-pressed={physicalFilters.has(filter)} onClick={() => toggleFilter(filter)}>{FILTER_LABELS[filter]}</button>)}</div>}
       {mode === 'political' && <div className="filter-bar level-bar" aria-label="Nivel territorial">{(Object.keys(POLITICAL_LEVEL_LABELS) as PoliticalLevel[]).map((level) => <button key={level} className={politicalLevel === level ? 'active' : ''} aria-pressed={politicalLevel === level} onClick={() => setPoliticalLevel(level)}>{POLITICAL_LEVEL_LABELS[level]}</button>)}</div>}
