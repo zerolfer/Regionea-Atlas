@@ -5,11 +5,11 @@
 <title>Regionea · Movimiento del logo</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#29251f;background:#f7f2e8}body{max-width:960px;margin:48px auto;padding:0 24px}h1{font:700 32px Georgia,serif}p{line-height:1.6;color:#716b62}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}.card{background:#fffdf8;border:1px solid #d8d0c3;border-radius:20px;padding:28px;text-align:center}.logo{width:min(100%,230px);height:auto;color:var(--ink,#b35e37)}.rim,.handle{stroke-dasharray:1;stroke-dashoffset:1}.rim{animation:draw 1.1s cubic-bezier(.4,0,.2,1) .3s forwards}.handle{animation:draw .3s ease-out forwards}.inside{opacity:1}@keyframes draw{to{stroke-dashoffset:0}}button{font:inherit;border:1px solid #d8d0c3;background:#fffdf8;border-radius:10px;padding:10px 16px;cursor:pointer}button:focus-visible{outline:3px solid #326b89;outline-offset:3px}.controls{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0}button[aria-pressed=true]{background:#29251f;color:#fffdf8}.small{width:34px;height:34px;display:block;margin:20px auto 0}.small .rim,.small .handle,.small .inside{animation:none;opacity:1;stroke-dashoffset:0}footer{font-size:13px;color:#716b62;margin-top:24px}@media(max-width:760px){.grid{grid-template-columns:1fr}body{margin-top:24px}}@media(prefers-reduced-motion:reduce){.rim,.handle,.inside{animation:none;opacity:1;stroke-dashoffset:0}}
-</style>
+.row-title{grid-column:1/-1;text-align:left;margin:8px 0 0;font-size:19px}.three-color .rim,.three-color .handle{stroke:#326b89}.three-color .inside>path:first-child{stroke:#b35e37}.three-color .inside>path:nth-child(2){stroke:#4e765c}</style>
 <h1>El círculo se dibuja; el símbolo permanece</h1>
 <p>Los contornos interiores permanecen visibles. El palito se dibuja desde el interior y, desde su extremo, nace el círculo exterior en sentido horario. Una sola reproducción al abrir; puedes repetirla para comparar.</p>
 <div class="controls"><button id="replay">Repetir animación</button><button data-color="#b35e37" aria-pressed="true">Político</button><button data-color="#4e765c" aria-pressed="false">Físico</button><button data-color="#326b89" aria-pressed="false">Transporte</button></div>
-<main class="grid"><section class="card"><h2>Original</h2><svg class="logo original" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Logo original animado">
+<main class="grid"><h2 class="row-title">Colores actuales y versiones en una tinta</h2><section class="card"><h2>Original</h2><svg class="logo original" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Logo original animado">
   <circle cx="64" cy="64" r="60" fill="#f7f2e8"/>
   <circle class="rim" pathLength="1" transform="rotate(48.09 64 64)" cx="64" cy="64" r="56" fill="none" stroke="#29251f" stroke-width="5"/>
   <path d="M27 73c8-20 17-35 35-39 17-4 34 6 38 21 5 18-8 36-29 41-17 4-35-3-44-23Z" fill="#c96541"/>
@@ -24,6 +24,21 @@
 </main>
 <footer>El original conserva el SVG y sus colores actuales. A y B son bocetos SVG reconstruidos para estudiar el movimiento; no son el trazado definitivo de la lámina. Duración total: 1,4 s (palito: 0,3 s; círculo: 1,1 s). Si el dispositivo solicita reducir el movimiento, se muestra el símbolo estático.</footer>
 <script>
+const previewGrid=document.querySelector('.grid');
+const baseCards=[...previewGrid.querySelectorAll('.card')];
+const rowTitle=document.createElement('h2');rowTitle.className='row-title';rowTitle.textContent='Los tres colores combinados en cada logo';previewGrid.append(rowTitle);
+baseCards.forEach(card=>{
+  const copy=card.cloneNode(true);copy.classList.add('three-color');
+  const svg=copy.querySelector('svg');svg.setAttribute('aria-label',svg.getAttribute('aria-label')+' · tres colores');
+  if(svg.classList.contains('original')){
+    svg.querySelector('.rim').setAttribute('stroke','#326b89');
+    svg.querySelector('.handle').setAttribute('stroke','#326b89');
+    const paths=svg.querySelectorAll('path:not(.handle)');
+    paths[0].setAttribute('fill','#b35e37');paths[2].setAttribute('stroke','#4e765c');
+    copy.querySelector('p').textContent='Contorno azul, territorio terracota e interior verde.';
+  }
+  previewGrid.append(copy);
+});
 document.querySelectorAll('.card').forEach(card=>{const small=card.querySelector('svg').cloneNode(true);small.classList.add('small');small.setAttribute('aria-label','Vista estática a 34 píxeles');card.append(small)});
 document.querySelector('#replay').addEventListener('click',()=>{document.querySelectorAll('.logo:not(.small)').forEach(svg=>{const clone=svg.cloneNode(true);svg.replaceWith(clone)})});
 document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{document.documentElement.style.setProperty('--ink',button.dataset.color);document.querySelectorAll('[data-color]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)))}));
