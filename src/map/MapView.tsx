@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { AttributionControl, Map, NavigationControl, Popup, setWorkerUrl } from 'maplibre-gl'
+import { Map, NavigationControl, Popup, setWorkerUrl } from 'maplibre-gl'
 import type { FilterSpecification, GeoJSONSource, MapLayerMouseEvent, MapGeoJSONFeature } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -8,6 +8,7 @@ import { geometryBounds } from '../data/transit'
 import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from '../types'
 import { APP_VERSION } from '../version'
 import { viewportPadding } from './viewport-padding'
+import { CollapsedAttributionControl } from './attribution-control'
 import { PHYSICAL_FILTER_KINDS, physicalSelectionFilter } from './physical'
 import { fitEntityBounds, SelectionFocusController } from './selection-focus'
 
@@ -213,7 +214,7 @@ export default function MapView(props: Props) {
     map.setPadding(viewportPadding(window.innerWidth, window.innerHeight, propsRef.current.sheetLevel, propsRef.current.desktopPanelCollapsed))
     mapRef.current = map
     map.addControl(new NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
-    map.addControl(new AttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-right')
+    map.addControl(new CollapsedAttributionControl({ customAttribution: `Regionea Atlas v${APP_VERSION}`, compact: true }), 'bottom-right')
 
     let clickTimer: number | undefined
     const riverTooltip = new Popup({ closeButton: false, closeOnClick: false, offset: 12, className: 'river-tooltip' })
