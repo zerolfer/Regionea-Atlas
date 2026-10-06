@@ -90,3 +90,11 @@ Los requisitos están cubiertos por las tres tareas; los cinco riesgos tienen co
 - Task 3: documentación actualizada, revisión independiente completada y hallazgos importantes corregidos en una pasada. Sin hallazgos críticos ni menores pendientes. Sin merge ni push.
 - Revisión final: conservar/reaplicar vehículos tras cada cambio de fondo y refrescar sin vaciar el último GeoJSON válido; restaurar inclinación explícita en los tres modos, incluso sin terreno. Las dos pruebas de regresión fallaron antes y pasan tras corregir. Solapamiento del móvil compacto reproducido mediante geometría DOM (160 > 119 px) y verificado tras el ajuste (109 < 119 px); también vertical 667 px y horizontal. Suite final 82/82, validadores, lint y build correctos.
 - Decisiones de ejecución: reutilizar la rama y checkout existentes por rapidez (requiere evitar ediciones concurrentes en los mismos archivos); registro nativo manual porque los helpers Bash no funcionan con las rutas Windows (coste de mantenimiento manual). Gestos en dispositivo físico y disponibilidad futura de servicios requieren revisión/seguimiento fuera de estas comprobaciones; no se promete garantía de servicio.
+
+## Cierre actualizado, 2026-10-06
+
+- [x] Bloque integrado en `main` y subido al repositorio tras autorización del usuario. Los resultados anteriores describen el estado histórico anterior a la integración.
+- [x] Refinamientos posteriores del selector: nombre «Tipo de mapa», interruptores móviles, ayuda flotante con texto según dispositivo, etiquetas centradas y legibilidad sobre satélite. También se corrigió la ayuda en móvil horizontal.
+- [x] Última verificación del bloque antes de la integración: 92 pruebas, validadores de datos, lint y build correctos. Sigue la advertencia conocida del tamaño del chunk MapLibre.
+- [ ] Comprobación manual de gestos multitáctiles en dispositivos físicos. No se afirma que se haya realizado ni que esta actualización documental verifique el despliegue remoto.
+- La mejora de resolución de imágenes y la ampliación de la red fluvial son trabajos separados, registrados en [pendientes](../../pendientes.md); no reabren la integración del bloque 3D entregado.

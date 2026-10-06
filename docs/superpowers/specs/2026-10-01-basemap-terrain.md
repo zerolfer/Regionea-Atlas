@@ -1,6 +1,6 @@
 # Fondos y terreno 3D
 
-Estado: diseño y resolución aprobados por el usuario el 2026-10-01; implementado en `codex/basemap-terrain`, pendiente de revisión manual e integración. No hay cambios funcionales publicados.
+Estado: implementado, integrado en `main` y subido al repositorio; cierre actualizado el 2026-10-06. El selector final se llama «Tipo de mapa». La comprobación multitáctil en dispositivos físicos sigue pendiente como verificación manual, no como implementación o integración pendiente. Las mejoras de resolución regional y cobertura fluvial se registran por separado en [pendientes](../../pendientes.md).
 
 ## Experiencia acordada
 

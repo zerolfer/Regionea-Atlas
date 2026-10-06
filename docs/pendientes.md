@@ -1,6 +1,10 @@
 # Pendientes y decisiones abiertas
 
-Esta nota recoge trabajo futuro; no describe funciones ya entregadas ni compromete una arquitectura. Revisarla al iniciar cada bloque de desarrollo y actualizarla cuando se tome una decisión o se cierre una tarea.
+Esta nota recoge trabajo futuro y el cierre de bloques ya entregados, sin comprometer una arquitectura. Revisarla al iniciar cada bloque de desarrollo y actualizarla cuando se tome una decisión o se cierre una tarea.
+
+## Bloques entregados
+
+- [x] Fondos y terreno 3D integrados en `main` y subidos al repositorio (cierre actualizado el 2026-10-06): selector «Tipo de mapa», plano/satélite, colores de altitud, cámara inclinada y edificios simplificados. Véanse el [diseño](superpowers/specs/2026-10-01-basemap-terrain.md) y los [resultados](superpowers/plans/2026-10-01-basemap-terrain.md). La resolución de 10 m del fondo mundial no equivale a ortofotografía urbana de alta resolución. La mejora de imagen es un pendiente distinto, no una integración pendiente del bloque 3D.
 
 ## Decisión pendiente: arquitectura de datos y backend
 
@@ -21,6 +25,7 @@ El resultado de ese estudio debe quedar en una decisión de arquitectura con una
 
 ## Datos y cobertura
 
+- Completar la red fluvial oficial de Asturias, sin excluir cursos por carecer de nombre o por tener tramos menores de 5 km. Diagnóstico del 2026-10-06: el importador impone ambos filtros y el snapshot incluye 233 geometrías fluviales; la capa oficial «Red fluvial» devuelve 14.979 registros de tipo «Línea de eje de río» al consultar sin esos filtros (registros/tramos, no ríos distintos). El servicio limita las respuestas a 1.000 registros: implementar paginación y validar recuentos/IDs antes de publicar. Graduar la visualización por escala, no descartar detalle durante la importación; no inventar topónimos para cursos sin nombre. Usar Redes como caso de regresión y comprobar qué otros tipos de cauce ofrece la fuente.
 - Generalizar el pipeline territorial y físico, hoy específico de Asturias, mediante adaptadores por cobertura. Generalizar también el validador, cuyos recuentos y relaciones parentales son asturianos.
 - Estudiar fragmentación por cobertura, concejo o ciudad y carga desde el manifiesto para evitar colecciones GeoJSON monolíticas. La estrategia concreta depende del estudio de backend.
 - Persistir relaciones verificables entre sierras y sus picos; la asociación actual por proximidad es una heurística de interfaz.
@@ -37,9 +42,9 @@ El resultado de ese estudio debe quedar en una decisión de arquitectura con una
 
 ## Experiencia y calidad
 
-- Fondos y terreno 3D implementados en la rama `codex/basemap-terrain`, pendientes de revisión manual e integración: [diseño aprobado](superpowers/specs/2026-10-01-basemap-terrain.md) y [plan/resultados](superpowers/plans/2026-10-01-basemap-terrain.md). La resolución gratuita de 10 m fue aceptada para este primer bloque; no equivale a ortofotografía urbana de alta resolución.
-- Para una fase futura, probar superposición de imágenes regionales más detalladas sobre una base mundial según cobertura/zoom, con transiciones de color y fechas explícitas. No es parte del primer bloque 3D.
-- Fotogrametría de edificios queda fuera: comenzar con extrusiones simplificadas de las geometrías y alturas disponibles de OSM.
+- Comprobar gestos multitáctiles en dispositivos físicos; la implementación 3D está entregada, pero la revisión en navegador emulado no sustituye esa comprobación manual.
+- Mejorar la nitidez del fondo de imágenes: el proveedor mundial actual tiene 10 m por píxel y detalle hasta zoom 14; ampliar más no añade resolución. Propuesta pendiente de implementación: mantener el respaldo mundial y superponer ortofotos regionales por cobertura/zoom, empezando por PNOA en España. Verificar servicio, cobertura, licencia, CORS y rendimiento antes de integrar; mostrar atribuciones y diferencias de fecha/color sin prometer transiciones invisibles. Referencias: [resoluciones PNOA](https://pnoa.ign.es/pnoa-imagen/especificaciones-tecnicas) y [servicios web](https://pnoa.ign.es/web/portal/pnoa-imagen/visualizadores-y-servicios-web).
+- Fotogrametría de edificios queda fuera; las extrusiones simplificadas con geometrías y alturas disponibles de OSM ya forman parte del bloque entregado.
 
 - Hacer que los mensajes introductorios del panel respondan al área visible hasta una escala razonable, sin sustituir una selección explícita de parroquia o barrio.
 - Incorporar pruebas E2E con fuentes simuladas, regresión visual en móvil/tableta/escritorio y auditoría automatizada de accesibilidad; mantener revisión manual para gestos y mapa.
