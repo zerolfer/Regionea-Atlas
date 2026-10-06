@@ -431,7 +431,7 @@ export default function App() {
       {contextIds.length > 0 && (
         <div className="context-picker" role="dialog" aria-label="Territorios coincidentes">
           <div><span><span className="eyebrow">En este punto</span><small>Elige qué elemento quieres consultar</small></span><button className="icon-button" onClick={() => setContextIds([])} aria-label="Cerrar selector de territorios">×</button></div>
-          {contextIds.map((id) => { const entity = atlas?.entitiesById.get(id); return entity ? <button key={id} onClick={() => selectEntity(entity)}><strong>{entity.name}</strong><small>{PHYSICAL_KIND_LABELS[entity.kind] || TERRITORY_KIND_LABELS[entity.kind] || entity.kind}</small></button> : null })}
+          {contextIds.map((id) => { const entity = atlas?.entitiesById.get(id); return entity ? <button key={id} onClick={() => selectEntity(entity)}><strong>{entity.name || (entity.kind === 'river' ? 'Curso de agua sin nombre en la fuente' : PHYSICAL_KIND_LABELS[entity.kind])}</strong><small>{PHYSICAL_KIND_LABELS[entity.kind] || TERRITORY_KIND_LABELS[entity.kind] || entity.kind}</small></button> : null })}
         </div>
       )}
 

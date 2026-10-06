@@ -11,6 +11,14 @@ npm run dev
 
 La app se abre en `http://localhost:5173/mapa/politico`. Para regenerar datos desde fuentes externas, ejecute aparte `npm run data:sync`.
 
+Para actualizar solo la red fluvial, sin descargar territorios o transporte:
+
+```bash
+npm run data:physical:rivers
+```
+
+Inventaría y verifica todos los IDs de ejes naturales y cursos ocultos de SITPA antes de escribir el snapshot. Los fallos de descarga/validación conservan la colección anterior. Prepara archivos temporales, promueve el manifiesto al final y restaura originales si falla una promoción local. No equivale a un almacén remoto con publicación atómica entre varios archivos; despliegue siempre el snapshot validado completo. `npm run data:physical:sync` incluye esta actualización.
+
 También existen Docker Compose y Task:
 
 ```bash

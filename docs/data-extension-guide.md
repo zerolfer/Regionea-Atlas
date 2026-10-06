@@ -93,6 +93,8 @@ Después actualice las reglas específicas del validador, que hoy enumeran los c
 
 ## Añadir accidentes físicos
 
+Para la red fluvial asturiana, use `npm run data:physical:rivers` o `fetchRiverCollection`/`buildRiverFeatures` del importador compartido. No filtre por nombre o longitud: gradúe el dibujo mediante `minZoom` después de importar. La completitud se comprueba contra inventario de IDs y recuentos; el límite de 1.000 del servicio obliga a descargar lotes. Para nuevas coberturas mantenga ese criterio, pero confirme tipos de cauce, IDs autoritativos y límites propios de la fuente. No asocie cursos por un nombre igual y proximidad, ni deduzca una identidad fluvial del código de clase geométrica. Véase el [contrato fluvial](contracts.md#red-fluvial-asturiana).
+
 1. Confirme que el tipo existe en `PhysicalFeatureKind`; si es nuevo, añádalo también a etiquetas, filtros y estilo.
 2. Cree IDs a partir de un código estable de la fuente. Use hash de nombre+bbox solo como último recurso y documente su fragilidad.
 3. Normalice con `physicalFeature` o un adaptador equivalente.

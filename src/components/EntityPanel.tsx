@@ -36,7 +36,7 @@ export default function EntityPanel({ entity, editorial, source, datasetDate, pa
   const formattedSourceDate = formatDatasetDate(entity.sourceDate)
   return (
     <article className="entity-panel">
-      <PanelHeader title={entity.name} kicker={editorial?.kicker || label} onClose={onClose} />
+      <PanelHeader title={entity.name || (entity.kind === 'river' ? 'Curso de agua sin nombre en la fuente' : label)} kicker={editorial?.kicker || label} onClose={onClose} />
       <div className="panel-body">
         {entity.localName && entity.localName !== entity.name && <p className="local-name">{entity.localName}</p>}
         {ancestors.length > 0 && <nav className="territory-path" aria-label="Ruta territorial">{ancestors.map((ancestor) => <button key={ancestor.id} onClick={() => onNavigate(ancestor)}>{ancestor.name}</button>)}<span>{entity.name}</span></nav>}

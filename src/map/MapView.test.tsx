@@ -1,4 +1,4 @@
-import { act, render } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import type { AtlasEntity } from '../types'
@@ -22,6 +22,7 @@ const { camera, listeners } = vi.hoisted(() => {
     }),
     isStyleLoaded: vi.fn(() => true), resetListeners: () => handlers.clear(),
     getCanvas: () => document.createElement('canvas'), getLayer: vi.fn(() => undefined as object | undefined),
+    queryRenderedFeatures: vi.fn(() => [] as { properties: { kind: string; name: string } }[]),
     getSource: vi.fn(() => undefined as object | undefined), remove: vi.fn(),
     getTerrain: vi.fn(() => null as { source: string; exaggeration: number } | null), setTerrain: vi.fn(),
     getPitch: vi.fn(() => 0), getBearing: () => 125, getZoom: () => 12,
@@ -34,7 +35,13 @@ const { camera, listeners } = vi.hoisted(() => {
 vi.mock('maplibre-gl', () => ({
   Map: vi.fn(function () { return camera }),
   AttributionControl: class {}, NavigationControl: class {},
-  Popup: class { remove() {} }, setWorkerUrl: vi.fn(),
+  Popup: class {
+    element = document.createElement('div')
+    setLngLat() { return this }
+    setText(value: string) { this.element.textContent = value; return this }
+    addTo() { document.body.append(this.element); return this }
+    remove() { this.element.remove() }
+  }, setWorkerUrl: vi.fn(),
 }))
 import MapView from './MapView'
 import { Map } from 'maplibre-gl'
@@ -45,6 +52,7 @@ beforeEach(() => {
   camera.getSource.mockReturnValue(undefined)
   camera.getTerrain.mockReturnValue(null)
   camera.getPitch.mockReturnValue(0)
+  camera.queryRenderedFeatures.mockReturnValue([])
 })
 
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals() })
@@ -59,6 +67,13 @@ function props(): ComponentProps<typeof MapView> {
     onEntityClick: vi.fn(), onTransitClick: vi.fn(), onViewportChange: vi.fn(), onLocateMatches: vi.fn(), onToast: vi.fn(),
   }
 }
+
+it('el tooltip de un cauce sin topónimo es descriptivo, no vacío', () => {
+  camera.queryRenderedFeatures.mockReturnValue([{ properties: { kind: 'river', name: '' } }])
+  render(<MapView {...props()} mode="physical" />)
+  act(() => listeners.mousemove({ point: { x: 100, y: 100 }, lngLat: { lng: -5.5, lat: 43.3 } } as never))
+  expect(screen.getByText('Curso de agua sin nombre en la fuente')).toBeInTheDocument()
+})
 
 it('conserva vehículos en cada cambio de fondo aunque el refresco de red falle', async () => {
   const source = { setData: vi.fn() }
@@ -155,6 +170,21 @@ it('no oculta los errores de otras fuentes al gestionar el respaldo satelital', 
   act(() => listeners.error({ sourceId: 'openmaptiles', error }))
   expect(log).toHaveBeenCalledWith(error)
   log.mockRestore()
+})
+
+it('la caída de PNOA conserva el fondo mundial y solo avisa una vez', () => {
+  const initial = { ...props(), appearance: { ...props().appearance, basemap: 'satellite' as const } }
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  render(<MapView {...initial} />)
+  act(() => {
+    listeners.error({ sourceId: 'satellite-pnoa-mainland', error: new Error('PNOA failed') })
+    listeners.error({ sourceId: 'satellite-pnoa-canaries', error: new Error('PNOA failed') })
+  })
+  expect(initial.onToast).toHaveBeenCalledOnce()
+  expect(initial.onToast).toHaveBeenCalledWith(expect.stringContaining('mundial'))
+  expect(log).not.toHaveBeenCalled()
+  expect(camera.setStyle).not.toHaveBeenCalled()
+  expect(camera.jumpTo).not.toHaveBeenCalled()
 })
 
 it('el comparador no vuelve a encuadrar cuando solo cambia la apertura del panel', () => {

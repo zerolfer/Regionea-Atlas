@@ -59,6 +59,7 @@ type AtlasEntity = {
   referenceYear?: number | null
   elevationM?: number | null
   lengthKm?: number | null
+  minZoom?: number
   territoryIds?: string[]
   geometryRole?: 'area' | 'label' | 'line' | 'point'
   geometryNote?: string
@@ -110,6 +111,18 @@ Golfos, bahías, deltas y rías se dibujan y seleccionan como superficies cuando
 `geometryNote` explica el alcance de la superficie; `sourceDate` es la actualización conocida de la fuente (ISO `YYYY-MM` o `YYYY-MM-DD`, sin inventar precisión). Es independiente de `manifest.generatedAt`, que fecha la generación de la colección. MITECO delimita masas de agua de transición, no todo el paisaje de una ría. El Ebro delimita las unidades de llanura deltaica y marismas QHpd/QHm del ICGC, no todo el delta geomorfológico ni el parque natural.
 
 `geometryId` conserva IDs antiguos de topónimos al dirigir selección y encuadre hacia una superficie canónica del catálogo. Debe resolver a una entidad `area` sin otra referencia: no se permiten cadenas. El catálogo antiguo adopta bbox, fuente, fecha y nota de esa superficie; el importador conserva su nombre como alias en la entidad canónica. La búsqueda excluye duplicados con `geometryId`, pero las URLs antiguas siguen funcionando. La asociación exige mismo tipo, nombre normalizado, proximidad y una sola coincidencia; una ambigüedad no se resuelve automáticamente.
+
+### Red fluvial asturiana
+
+La capa 4 de Hidrografía SITPA aporta registros de eje de río y curso fluvial oculto. Se importan ambos tipos completos, incluidos arroyos cortos y registros sin topónimo; se excluyen canales, acequias, márgenes e islas fluviales porque no representan esos ejes naturales. «Completa» se refiere al inventario de esta fuente, no a una garantía de que todo cauce existente esté cartografiado.
+
+- Cada ID `physical-as-river-hydro-4-{objectid}` sigue representando un registro, no necesariamente un río completo. `lengthKm` mide ese registro; la ficha lo advierte.
+- `name: ''` conserva la ausencia de topónimo: la interfaz muestra «Curso de agua sin nombre en la fuente», sin convertir esa descripción en nombre oficial ni etiquetar el mapa con ella. No se asignan nombres de ríos vecinos a afluentes desconocidos.
+- `minZoom` es 7.5 para registros con nombre de cursos conectados de al menos 5 km, 10 para los demás con nombre y 12 para los sin nombre. La longitud conjunta solo reúne registros de igual nombre normalizado y extremos exactos coincidentes; no usa proximidad ni el campo `cod` (que clasifica geometrías, no identifica ríos).
+- Las partes de un mismo registro se encadenan únicamente en extremos exactos con dos incidencias, revirtiendo la orientación cuando procede. Los huecos y bifurcaciones reales se mantienen; no se añaden segmentos rectos para aparentar continuidad. IDs y selección siguen siendo por registro.
+- Un ID fluvial antiguo ya asociado a una superficie de ría conserva `geometryId`, naturaleza, fuente y encuadre canónicos; no reaparece como duplicado de búsqueda.
+
+`manifest.collections.physicalAsturias.riverCoverage` registra `sourceUrl`, filtro `where`, `featureCount`, `downloadedAt` y `objectIdsSha256` (SHA-256 del JSON de IDs numéricos ordenados). El descargador inventaría IDs, comprueba recuentos antes/después y descarga lotes de hasta 1.000; aborta ante IDs duplicados, inesperados o ausentes. El validador verifica que el inventario publicado coincide, incluidos los IDs redirigidos a rías. `downloadedAt` es la fecha de descarga, no una fecha inventada de actualización cartográfica.
 
 Excepción explícita de normalización: un eje hidrográfico clasificado como río y denominado oficialmente «Ría…» o «Estuario…» puede adoptar el tipo de la superficie MITECO coincidente bajo las mismas comprobaciones. No basta con desembocar en una ría. El eje enlazado deja de dibujarse como accidente independiente, pero su ID permanece resoluble.
 

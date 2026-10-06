@@ -130,9 +130,20 @@ for (const entity of catalog.physical) {
   assert(physicalKinds.has(entity.kind), `${entity.id}: tipo físico desconocido`)
   // SITPA publishes unnamed water bodies too. Keep their verified geometries;
   // do not fabricate a placename just to satisfy the catalogue.
-  assert(typeof entity.name === 'string' && (entity.name.trim() || entity.kind === 'lake'), `${entity.id}: topónimo físico vacío`)
+  assert(typeof entity.name === 'string' && (entity.name.trim() || ['lake', 'river'].includes(entity.kind)), `${entity.id}: topónimo físico vacío`)
   assert(ids.has(entity.id), `${entity.id}: accidente sin geometría`)
+  if (entity.kind === 'river' && entity.minZoom != null) {
+    assert([7.5, 10, 12].includes(entity.minZoom) && entity.lengthKm >= 0 && entity.geometryRole === 'line', `${entity.id}: escala o geometría fluvial no válida`)
+  }
   if (entity.kind === 'beach') assert(/^playa(s)?\b/i.test(entity.name), `${entity.id}: playa sin prefijo identificativo`)
+}
+const riverCoverage = manifest.collections.physicalAsturias?.riverCoverage
+if (riverCoverage) {
+  const rivers = catalog.physical.filter(entity => entity.id.startsWith('physical-as-river-hydro-4-'))
+  const objectIds = rivers.map(entity => Number(entity.id.slice('physical-as-river-hydro-4-'.length))).sort((a, b) => a - b)
+  assert(rivers.length === riverCoverage.featureCount && objectIds.every(Number.isInteger), 'Red fluvial: inventario incompleto')
+  assert(createHash('sha256').update(JSON.stringify(objectIds)).digest('hex') === riverCoverage.objectIdsSha256, 'Red fluvial: IDs distintos del inventario oficial')
+  assert(!Number.isNaN(Date.parse(riverCoverage.downloadedAt)) && riverCoverage.sourceUrl && riverCoverage.where, 'Red fluvial: procedencia o fecha de descarga ausente')
 }
 assert(manifest.collections.physicalCoastalAreas && manifest.collections.physicalCoastalAreasLabels, 'Faltan superficies costeras o sus etiquetas')
 assert(catalog.physical.some(({ id, kind, geometryRole }) => id === 'physical-es-delta-ebro' && kind === 'delta' && geometryRole === 'area'), 'Falta la superficie del delta del Ebro')

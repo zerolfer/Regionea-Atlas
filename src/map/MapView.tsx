@@ -156,7 +156,11 @@ function applySelection(map: Map, mode: MapMode, selected: AtlasEntity | null, t
       const riverLabel = `${prefix}-selected-river-label`
       if (map.getLayer(riverLabel)) map.setFilter(riverLabel, physicalSelectionFilter(selected?.kind === 'river' ? selected.id : undefined, 'LineString'))
       const normalLabel = `${prefix === 'physical' ? 'physical' : 'physical-europe'}-river-labels`
-      if (map.getLayer(normalLabel)) map.setFilter(normalLabel, ['all', ['==', ['get', 'kind'], 'river'], ['!=', ['get', 'id'], selected?.id || '__none__']])
+      if (map.getLayer(normalLabel)) {
+        const labelFilter: FilterSpecification = ['all', ['==', ['get', 'kind'], 'river'], ['!=', ['get', 'id'], selected?.id || '__none__']]
+        if (prefix === 'physical') labelFilter.push(['<=', ['coalesce', ['get', 'minZoom'], 7.5], ['zoom']])
+        map.setFilter(normalLabel, labelFilter)
+      }
     })
     if (map.getLayer('physical-related-peaks')) {
       map.setFilter('physical-related-peaks', ['in', ['get', 'id'], ['literal', relatedPhysicalIds]] as FilterSpecification)
@@ -226,7 +230,7 @@ export default function MapView(props: Props) {
       center: propsRef.current.initialView.center || ASTURIAS_CENTER,
       zoom: propsRef.current.initialView.zoom ?? 8,
       pitch: propsRef.current.initialView.pitch ?? 0, bearing: propsRef.current.initialView.bearing ?? 0,
-      attributionControl: false, fadeDuration: 120, maxZoom: 17, maxPitch: 80,
+      attributionControl: false, fadeDuration: 120, maxZoom: 19, maxPitch: 80,
     })
     mapRef.current = map
     map.addControl(new NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
@@ -275,7 +279,7 @@ export default function MapView(props: Props) {
       const features = map.queryRenderedFeatures(event.point, { layers })
       map.getCanvas().style.cursor = features.length ? 'pointer' : ''
       const river = propsRef.current.mode === 'physical' ? features.find((feature) => feature.properties?.kind === 'river') : null
-      if (river) riverTooltip.setLngLat(event.lngLat).setText(String(river.properties.name)).addTo(map)
+      if (river) riverTooltip.setLngLat(event.lngLat).setText(String(river.properties.name || 'Curso de agua sin nombre en la fuente')).addTo(map)
       else hideRiverTooltip()
     })
     map.on('moveend', () => {
@@ -283,10 +287,12 @@ export default function MapView(props: Props) {
       propsRef.current.onViewportChange({ center: [center.lng, center.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() })
     })
     map.on('error', (event) => {
-      if (!('sourceId' in event) || event.sourceId !== 'satellite-detail') { console.error(event.error); return }
+      if (!('sourceId' in event) || !['satellite-detail', 'satellite-pnoa-mainland', 'satellite-pnoa-canaries'].includes(event.sourceId as string)) { console.error(event.error); return }
       if (propsRef.current.appearance.basemap !== 'satellite' || imageryErrorReportedRef.current) return
       imageryErrorReportedRef.current = true
-      propsRef.current.onToast('No se pudo cargar el detalle satelital. Se conserva la imagen general de NASA.')
+      propsRef.current.onToast(event.sourceId === 'satellite-detail'
+        ? 'No se pudo cargar el detalle satelital. Se conserva la imagen general de NASA.'
+        : 'No se pudo cargar PNOA. Se conserva el fondo mundial disponible.')
     })
     map.on('style.load', () => {
       hideRiverTooltip()

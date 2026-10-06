@@ -5,6 +5,9 @@ Esta nota recoge trabajo futuro y el cierre de bloques ya entregados, sin compro
 ## Bloques entregados
 
 - [x] Fondos y terreno 3D integrados en `main` y subidos al repositorio (cierre actualizado el 2026-10-06): selector «Tipo de mapa», plano/satélite, colores de altitud, cámara inclinada y edificios simplificados. Véanse el [diseño](superpowers/specs/2026-10-01-basemap-terrain.md) y los [resultados](superpowers/plans/2026-10-01-basemap-terrain.md). La resolución de 10 m del fondo mundial no equivale a ortofotografía urbana de alta resolución. La mejora de imagen es un pendiente distinto, no una integración pendiente del bloque 3D.
+- [x] Red fluvial completa del inventario oficial SITPA: 20.816 registros de eje natural/curso oculto, incluidos 10.140 sin nombre. PNOA de alta resolución sobre la base mundial en España. Implementación y verificación locales en `codex/hydrography-pnoa` el 2026-10-06; pendiente revisión del usuario e integración, no se afirma despliegue en producción. Se conservan IDs y alias de rías. Continuidad sin unir huecos inventados; selección por registro, no identidad agregada de río.
+
+Verificación del bloque fluvial/PNOA: 103 tests, validador de atlas, lint y compilación correctos. QA en Edge automatizado: Redes en escritorio y móvil emulado (390 × 844), ortofoto urbana de Gijón a zoom 17, cambio plano/satélite y caída simulada de PNOA conservando el fondo mundial. WMS se utiliza porque sus zonas sin datos son transparentes; las teselas WMTS comprobadas eran opacas. Sigue pendiente la comprobación de rendimiento y gestos en dispositivos físicos. La compilación conserva el aviso conocido de tamaño del paquete de MapLibre.
 
 ## Decisión pendiente: arquitectura de datos y backend
 
@@ -25,9 +28,10 @@ El resultado de ese estudio debe quedar en una decisión de arquitectura con una
 
 ## Datos y cobertura
 
-- Completar la red fluvial oficial de Asturias, sin excluir cursos por carecer de nombre o por tener tramos menores de 5 km. Diagnóstico del 2026-10-06: el importador impone ambos filtros y el snapshot incluye 233 geometrías fluviales; la capa oficial «Red fluvial» devuelve 14.979 registros de tipo «Línea de eje de río» al consultar sin esos filtros (registros/tramos, no ríos distintos). El servicio limita las respuestas a 1.000 registros: implementar paginación y validar recuentos/IDs antes de publicar. Graduar la visualización por escala, no descartar detalle durante la importación; no inventar topónimos para cursos sin nombre. Usar Redes como caso de regresión y comprobar qué otros tipos de cauce ofrece la fuente.
+- La cobertura fluvial se comprueba ahora contra inventario de IDs y recuentos; no volver a introducir el antiguo filtro de nombre/longitud >5 km. La fuente contiene 14.979 ejes y 5.837 cursos ocultos, no 20.816 ríos distintos ni una garantía de que esté cartografiado cada cauce real. Investigar una identidad agregada por río solo con relaciones verificables, sin agrupar afluentes por nombre/proximidad.
 - Generalizar el pipeline territorial y físico, hoy específico de Asturias, mediante adaptadores por cobertura. Generalizar también el validador, cuyos recuentos y relaciones parentales son asturianos.
 - Estudiar fragmentación por cobertura, concejo o ciudad y carga desde el manifiesto para evitar colecciones GeoJSON monolíticas. La estrategia concreta depende del estudio de backend.
+- Medir la red fluvial completa en móviles reales y conexiones lentas: snapshot asturiano ~25,46 MB sin comprimir / ~4,32 MB con gzip; catálogo ~11,05 MB / ~1,02 MB con gzip (medición local, no tamaño transferido garantizado). Graduar el dibujo no elimina el coste de descargar/procesar toda la colección. La QA debe esperar también al worker GeoJSON tras cambiar de fondo; `networkidle` por sí solo no prueba que ya se dibujen los cauces.
 - Persistir relaciones verificables entre sierras y sus picos; la asociación actual por proximidad es una heurística de interfaz.
 - Preparar la publicación de territorios históricos y culturales y métricas `MetricValue` completas solo cuando existan fuentes, contratos y presentación adecuados.
 - Ampliar accidentes físicos y considerar rutas de montaña con fuentes y licencias comprobadas, sin deducir geometrías o relaciones de rótulos incompletos.
@@ -43,7 +47,7 @@ El resultado de ese estudio debe quedar en una decisión de arquitectura con una
 ## Experiencia y calidad
 
 - Comprobar gestos multitáctiles en dispositivos físicos; la implementación 3D está entregada, pero la revisión en navegador emulado no sustituye esa comprobación manual.
-- Mejorar la nitidez del fondo de imágenes: el proveedor mundial actual tiene 10 m por píxel y detalle hasta zoom 14; ampliar más no añade resolución. Propuesta pendiente de implementación: mantener el respaldo mundial y superponer ortofotos regionales por cobertura/zoom, empezando por PNOA en España. Verificar servicio, cobertura, licencia, CORS y rendimiento antes de integrar; mostrar atribuciones y diferencias de fecha/color sin prometer transiciones invisibles. Referencias: [resoluciones PNOA](https://pnoa.ign.es/pnoa-imagen/especificaciones-tecnicas) y [servicios web](https://pnoa.ign.es/web/portal/pnoa-imagen/visualizadores-y-servicios-web).
+- Ampliar detalle de imágenes a otras coberturas verificadas. PNOA en España ya está implementado; fuera de esa cobertura la base mundial sigue limitada a 10 m. No prometer transiciones invisibles entre fechas/colores distintos ni capacidad ilimitada de servicios públicos.
 - Fotogrametría de edificios queda fuera; las extrusiones simplificadas con geometrías y alturas disponibles de OSM ya forman parte del bloque entregado.
 
 - Hacer que los mensajes introductorios del panel respondan al área visible hasta una escala razonable, sin sustituir una selección explícita de parroquia o barrio.

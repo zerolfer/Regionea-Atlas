@@ -28,6 +28,10 @@ const source: SourceReference = {
 }
 
 describe('EntityPanel', () => {
+  it('un cauce sin topónimo tiene un título descriptivo sin inventar un nombre oficial', () => {
+    render(<EntityPanel entity={{ ...parish, kind: 'river', name: '', localName: '', boundaryStatus: 'reference' }} ancestors={[]} compared={false} onCompare={vi.fn()} onNavigate={vi.fn()} onClose={vi.fn()} />)
+    expect(screen.getByRole('heading', { name: 'Curso de agua sin nombre en la fuente' })).toBeInTheDocument()
+  })
   it('indica la fecha de la fuente sin inventar un día si solo se conoce el mes', () => {
     render(<EntityPanel entity={{ ...parish, kind: 'delta', geometryRole: 'area', geometryNote: 'Área sedimentaria de referencia.', sourceDate: '2021-02' }} source={source} ancestors={[]} compared={false} onCompare={vi.fn()} onNavigate={vi.fn()} onClose={vi.fn()} />)
     expect(screen.getByText('Área sedimentaria de referencia.')).toBeInTheDocument()

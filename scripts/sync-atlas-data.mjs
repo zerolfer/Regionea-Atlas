@@ -515,7 +515,7 @@ async function main() {
   const [peaksRaw, rangesRaw, riversRaw, reservoirsRaw, lakesRaw, parksRaw] = await Promise.all([
     fetchJson(arcgisQuery('NombresGeograficos', 2, "layer='030422' AND elevation>=1000", 'objectid,text,elevation,layer,descripción')),
     fetchJson(arcgisQuery('NombresGeograficos', 2, "layer='030424'", 'objectid,text,elevation,layer,descripción')),
-    fetchJson(arcgisQuery('Hidrografia', 4, "nombre IS NOT NULL AND tipo='Línea de eje de río' AND st_length(shape)>5000", 'objectid,nombre,tipo,st_length(shape)')),
+    fetchRiverCollection(fetchJson),
     fetchJson(arcgisQuery('Hidrografia', 1)),
     fetchJson(arcgisQuery('Hidrografia', 2)),
     Promise.all(protectedLayerIds.map((layer) => fetchJson(arcgisQuery('EspaciosProtegidos', layer)))),
@@ -528,9 +528,7 @@ async function main() {
     ...uniqueByName(rangesRaw.features
       .filter((feature) => usefulGeographicName(feature.properties.text))
       .map((feature) => physicalFeature(feature, 'range', feature.properties.text, {}, 0, 'names-030424'))),
-    ...riversRaw.features.map((feature) => physicalFeature(feature, 'river', feature.properties.nombre, {
-      lengthKm: roundMetric(feature.properties['st_length(shape)'] / 1000),
-    }, 0.00012, 'hydro-4')),
+    ...buildRiverFeatures(riversRaw.features),
     ...reservoirsRaw.features.map((feature) => physicalFeature(feature, 'reservoir', feature.properties.nombre || feature.properties.NOMBRE, {}, 0, 'hydro-1')),
     ...lakesRaw.features.map((feature) => physicalFeature(feature, 'lake', feature.properties.nombre || feature.properties.NOMBRE, {}, 0, 'hydro-2')),
     ...parksRaw.flatMap((group, index) => group.features.map((feature) => physicalFeature(
@@ -541,7 +539,7 @@ async function main() {
       0.0002,
       `protected-${protectedLayerIds[index]}`,
     ))),
-  ].filter((feature) => feature.properties.name)
+  ].filter((feature) => feature.properties.name || feature.properties.kind === 'river')
 
   const [naturalRiversRaw, naturalLakesRaw, naturalRegionsRaw, naturalPeaksRaw] = await Promise.all([
     fetchJson(`${SOURCES.naturalEarth}/ne_50m_rivers_lake_centerlines.geojson`),
@@ -621,6 +619,7 @@ async function main() {
     catalog: { sourceIds: ['natural-earth', 'ign-administrative-units', 'sitpa-functional-regions', 'sitpa-administrative-units', 'sadei-parishes', 'sadei-neighborhoods', 'sitpa-physical'], license: 'Mixta; consultar fuentes', bounds: EUROPE_BOUNDS, minZoom: 0, maxZoom: 24 },
   }
   Object.entries(collectionMetadata).forEach(([name, metadata]) => Object.assign(files[name], metadata))
+  files.physicalAsturias.riverCoverage = riversRaw.coverage
 
   const manifest = {
     version: VERSION,
@@ -739,6 +738,126 @@ function physicalFeature(feature, kind, name, extras = {}, tolerance = 0, namesp
     territoryIds: ['es-as'],
     ...extras,
   }, tolerance)
+}
+
+const RIVER_TYPES = ['Línea de eje de río', 'Curso fluvial oculto']
+const RIVER_WHERE = "tipo IN ('Línea de eje de río','Curso fluvial oculto')"
+
+export async function fetchRiverCollection(request, batchSize = 1000) {
+  if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 1000) throw new Error('Lote fluvial no válido')
+  const query = new URL(arcgisQuery('Hidrografia', 4, RIVER_WHERE, 'objectid,nombre,tipo,st_length(shape)'))
+  const inventory = new URL(query)
+  inventory.searchParams.set('returnIdsOnly', 'true')
+  inventory.searchParams.set('f', 'json')
+  const { objectIds } = await request(inventory.toString())
+  if (!Array.isArray(objectIds) || !objectIds.length || objectIds.some(id => !Number.isInteger(id)) || new Set(objectIds).size !== objectIds.length) throw new Error('Inventario fluvial vacío o duplicado')
+  objectIds.sort((a, b) => a - b)
+  const countQuery = new URL(query)
+  countQuery.searchParams.set('returnCountOnly', 'true')
+  countQuery.searchParams.set('f', 'json')
+  const checkCount = async () => {
+    if ((await request(countQuery.toString())).count !== objectIds.length) throw new Error('Inventario fluvial incompleto o modificado durante la descarga')
+  }
+  await checkCount()
+  const features = []
+  const seen = new Set()
+  for (let offset = 0; offset < objectIds.length; offset += batchSize) {
+    const batch = objectIds.slice(offset, offset + batchSize)
+    query.searchParams.set('objectIds', batch.join(','))
+    const page = await request(query.toString())
+    if (!Array.isArray(page.features) || page.features.length !== batch.length || page.exceededTransferLimit) throw new Error('Descarga fluvial incompleta o truncada')
+    const expected = new Set(batch)
+    for (const feature of page.features) {
+      const id = feature.properties?.objectid
+      if (!expected.has(id) || seen.has(id)) throw new Error('ID fluvial inesperado o duplicado')
+      seen.add(id)
+      features.push(feature)
+    }
+  }
+  await checkCount()
+  features.sort((a, b) => a.properties.objectid - b.properties.objectid)
+  return { type: 'FeatureCollection', features, coverage: {
+    sourceUrl: `${SOURCES.asturias}/Hidrografia/MapServer/4`, where: RIVER_WHERE,
+    featureCount: features.length, downloadedAt: new Date().toISOString(),
+    objectIdsSha256: createHash('sha256').update(JSON.stringify(objectIds)).digest('hex'),
+  } }
+}
+
+const endpointKey = point => JSON.stringify(point.slice(0, 2))
+
+// Only join exact, unambiguous endpoints within the same source record.
+// No snapping, interpolation, or inference of names across tributaries.
+function chainRiverParts(lines) {
+  const ends = new Map()
+  lines.forEach((line, index) => {
+    for (const point of [line[0], line.at(-1)]) {
+      const key = endpointKey(point)
+      if (!ends.has(key)) ends.set(key, [])
+      ends.get(key).push(index)
+    }
+  })
+  const used = new Set(), result = []
+  for (let index = 0; index < lines.length; index++) {
+    if (used.has(index)) continue
+    used.add(index)
+    let chain = [...lines[index]]
+    for (const reverse of [false, true]) {
+      if (reverse) chain.reverse()
+      while (true) {
+        const key = endpointKey(chain.at(-1)), adjacent = ends.get(key)
+        if (adjacent.length !== 2) break
+        const next = adjacent.find(i => !used.has(i))
+        if (next == null) break
+        used.add(next)
+        const line = [...lines[next]]
+        if (endpointKey(line[0]) !== key) line.reverse()
+        chain.push(...line.slice(1))
+      }
+      if (reverse) chain.reverse()
+    }
+    result.push(chain)
+  }
+  return result
+}
+
+export function buildRiverFeatures(raw) {
+  const records = raw.filter(feature => RIVER_TYPES.includes(feature.properties?.tipo))
+  const parent = records.map((_, index) => index)
+  function root(index) {
+    while (parent[index] !== index) { parent[index] = parent[parent[index]]; index = parent[index] }
+    return index
+  }
+  const ends = new Map()
+  const geometries = records.map((feature, index) => {
+    const geometry = feature.geometry
+    const lines = geometry?.type === 'LineString' ? [geometry.coordinates] : geometry?.type === 'MultiLineString' ? geometry.coordinates : []
+    if (!lines.length || lines.some(line => line.length < 2 || line.some(point => point.length < 2 || !point.slice(0, 2).every(Number.isFinite) || Math.abs(point[0]) > 180 || Math.abs(point[1]) > 90))) throw new Error(`Geometría fluvial inválida: ${feature.properties.objectid}`)
+    const name = titleCase(feature.properties.nombre)
+    if (name) for (const line of lines) for (const point of [line[0], line.at(-1)]) {
+      const key = `${name}:${endpointKey(point)}`
+      if (ends.has(key)) parent[root(index)] = root(ends.get(key))
+      else ends.set(key, index)
+    }
+    const chained = chainRiverParts(lines)
+    return chained.length === 1 ? { type: 'LineString', coordinates: chained[0] } : { type: 'MultiLineString', coordinates: chained }
+  })
+  const lengths = new Map()
+  records.forEach((feature, index) => {
+    const length = feature.properties['st_length(shape)']
+    if (!Number.isFinite(length) || length < 0 || !Number.isInteger(feature.properties.objectid)) throw new Error('ID o longitud fluvial inválida')
+    const group = root(index)
+    lengths.set(group, (lengths.get(group) || 0) + length)
+  })
+  return records.map((feature, index) => {
+    const named = Boolean(titleCase(feature.properties.nombre))
+    const hidden = feature.properties.tipo === 'Curso fluvial oculto'
+    return physicalFeature({ ...feature, geometry: geometries[index] }, 'river', feature.properties.nombre, {
+      lengthKm: roundMetric(feature.properties['st_length(shape)'] / 1000),
+      minZoom: named ? lengths.get(root(index)) >= 5000 ? 7.5 : 10 : 12,
+      geometryRole: 'line', boundaryStatus: 'reference',
+      geometryNote: `${hidden ? 'Curso fluvial oculto según la fuente. ' : ''}${named ? '' : 'La fuente no proporciona un topónimo para este tramo. '}Longitud del registro cartografiado, no necesariamente del río completo.`,
+    }, 0.000015, 'hydro-4')
+  })
 }
 
 export function naturalPhysical(feature, kind, extras = {}) {

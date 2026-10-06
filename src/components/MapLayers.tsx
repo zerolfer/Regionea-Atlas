@@ -118,7 +118,7 @@ export default function MapLayers({ mode, value, onChange }: Props) {
         <div className="layers-heading"><h2>Información del mapa</h2><button ref={informationClose} className="icon-button" aria-label="Cerrar información" onClick={() => setInformationOpen(false)}>×</button></div>
         <div className="layers-information-body">
           {mode === 'physical' && <><p>{touch ? 'Arrastra con dos dedos para inclinar el mapa.' : 'Mantén pulsado el botón derecho y arrastra para inclinar el mapa.'}</p><p>Edificios simplificados con alturas disponibles o estimadas de OSM, sin fachadas fotografiadas.</p></>}
-          <p>En Satélite: <a href="https://esa-worldcover.org/en/data-access" target="_blank" rel="noreferrer">Sentinel‑2 · 2021 · 10 m</a>. Paisaje, sin detalle de fachadas. <a href="https://www.earthdata.nasa.gov/data/tools/gibs" target="_blank" rel="noreferrer">NASA Blue Marble · 2004 · 500 m</a> en vistas generales y como respaldo.</p>
+          <p>En España, al acercarte: <a href="https://pnoa.ign.es/pnoa-imagen/ortofotos-pnoa-maxima-actualidad" target="_blank" rel="noreferrer">IGN · PNOA Máxima Actualidad</a>, ortofotos de alta resolución, con fechas según zona. Base mundial: <a href="https://esa-worldcover.org/en/data-access" target="_blank" rel="noreferrer">Sentinel‑2 · 2021 · 10 m</a>. <a href="https://www.earthdata.nasa.gov/data/tools/gibs" target="_blank" rel="noreferrer">NASA Blue Marble · 2004 · 500 m</a> en vistas generales y como respaldo.</p>
         </div>
       </aside>}
   </div>

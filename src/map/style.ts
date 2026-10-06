@@ -188,8 +188,9 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-rivers', type: 'line', source: 'physical-asturias', minzoom: 7.5,
-      filter: ['==', ['get', 'kind'], 'river'],
-      paint: { 'line-color': '#347f9a', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 2.6], 'line-opacity': 0.88 },
+      filter: ['all', ['==', ['get', 'kind'], 'river'], ['<=', ['coalesce', ['get', 'minZoom'], 7.5], ['zoom']]],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#347f9a', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 13, 1.8, 17, 2.6], 'line-opacity': ['step', ['zoom'], 0, 7.5, ['case', ['<=', ['coalesce', ['get', 'minZoom'], 7.5], 7.5], 0.88, 0], 10, ['case', ['<=', ['coalesce', ['get', 'minZoom'], 7.5], 10], 0.88, 0], 12, 0.88] },
     },
     {
       id: 'physical-water', type: 'fill', source: 'physical-asturias', minzoom: 8,
@@ -226,7 +227,7 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-river-labels', type: 'symbol', source: 'physical-asturias', minzoom: 8,
-      filter: ['==', ['get', 'kind'], 'river'],
+      filter: ['all', ['==', ['get', 'kind'], 'river'], ['<=', ['coalesce', ['get', 'minZoom'], 7.5], ['zoom']]],
       layout: {
         'symbol-placement': 'line', 'symbol-spacing': 350,
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'], 'text-size': 11,
@@ -447,6 +448,8 @@ export function buildStyle(mode: MapMode, basemap: MapAppearance['basemap'] = 'p
     layers.splice(1, 0,
       { id: 'satellite-overview', type: 'raster', source: 'satellite-overview', paint: { 'raster-fade-duration': 150 } },
       { id: 'satellite-detail', type: 'raster', source: 'satellite-detail', minzoom: 6, paint: { 'raster-fade-duration': 150 } },
+      { id: 'satellite-pnoa-mainland', type: 'raster', source: 'satellite-pnoa-mainland', minzoom: 12, paint: { 'raster-fade-duration': 200 } },
+      { id: 'satellite-pnoa-canaries', type: 'raster', source: 'satellite-pnoa-canaries', minzoom: 12, paint: { 'raster-fade-duration': 200 } },
     )
   }
   if (mode === 'physical') layers.push({
