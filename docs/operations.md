@@ -19,6 +19,10 @@ npm run data:physical:rivers
 
 Inventaría y verifica todos los IDs de ejes naturales y cursos ocultos de SITPA antes de escribir el snapshot. Los fallos de descarga/validación conservan la colección anterior. Prepara archivos temporales, promueve el manifiesto al final y restaura originales si falla una promoción local. No equivale a un almacén remoto con publicación atómica entre varios archivos; despliegue siempre el snapshot validado completo. `npm run data:physical:sync` incluye esta actualización.
 
+Para actualizar picos/montes/collados, sierras, lagos, embalses y figuras de protección, sin transporte ni territorios: `npm run data:physical:core`. Para toda la cobertura física, incluidos costa, ríos y contexto europeo: `npm run data:physical:sync`. Ambos comandos terminan refinando y validando catálogo, geometrías e inventarios; no desplegar salidas de scripts intermedios.
+
+El núcleo y el refinado preparan temporales, conservan originales y promueven el manifiesto al final. Si Windows niega `rename`, la publicación usa escritura recuperable sobre el destino y elimina solo su temporal. Esto no ofrece atomicidad entre archivos ni durante esa escritura: desplegar siempre el snapshot final validado. La arquitectura de publicación remota sigue pendiente.
+
 También existen Docker Compose y Task:
 
 ```bash

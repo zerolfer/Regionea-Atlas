@@ -1,7 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { fetchJson } from './sync-atlas-data.mjs'
+import { fetchJson, fetchArcgisCollection } from './sync-atlas-data.mjs'
+import { cartographicName } from './lib/physical-labels.mjs'
 
 const ROOT = process.cwd()
 const ASTURIAS_PATH = path.join(ROOT, 'public', 'data', 'atlas', 'physical', 'asturias.geojson')
@@ -28,26 +29,6 @@ function endpoint(service, layer, where = '1=1') {
   url.searchParams.set('orderByFields', 'objectid')
   url.searchParams.set('f', 'geojson')
   return url
-}
-
-async function fetchCollection(url) {
-  const features = []
-  const ids = new Set()
-  let more = true
-  while (more) {
-    url.searchParams.set('resultOffset', String(features.length))
-    const collection = await fetchJson(url)
-    if (!Array.isArray(collection.features)) throw new Error(`Respuesta GeoJSON inválida de ${url}`)
-    for (const feature of collection.features) {
-      const id = feature.properties.objectid ?? feature.properties.OBJECTID
-      if (id == null || ids.has(id)) throw new Error(`Paginación costera inválida de ${url}`)
-      ids.add(id)
-      features.push(feature)
-    }
-    more = collection.exceededTransferLimit === true || collection.features.length === 1000
-    if (more && !collection.features.length) throw new Error(`Paginación costera vacía de ${url}`)
-  }
-  return { type: 'FeatureCollection', features }
 }
 
 export function coastalKind(feature) {
@@ -78,11 +59,12 @@ export function beachDisplayName(name) {
 }
 
 function decoratePoint(feature, kind, name, namespace, previousIds) {
-  if (!kind) return null
+  const labelEligible = Boolean(kind && String(name || '').trim())
+  kind ||= 'coast'
   const original = titleCase(name)
   const safeName = kind === 'beach' ? beachDisplayName(original) : original
   const coordinates = feature.geometry?.coordinates
-  if (!safeName || feature.geometry?.type !== 'Point' || !Array.isArray(coordinates)) return null
+  if (feature.geometry?.type !== 'Point' || !Array.isArray(coordinates)) throw new Error('Geometría costera puntual no válida')
   const objectId = feature.properties.objectid ?? feature.properties.OBJECTID
   if (objectId == null) throw new Error(`Accidente costero sin ID: ${safeName}`)
   const id = previousIds.get(`${namespace}-${objectId}`) || `physical-as-${kind}-${namespace}-${objectId}`
@@ -92,16 +74,28 @@ function decoratePoint(feature, kind, name, namespace, previousIds) {
     properties: {
       id, slug: slugify(safeName), name: safeName, localName: original, aliases: safeName === original ? [] : [original], kind,
       sourceId: 'sitpa-physical', territoryIds: ['es-as'], bbox: [...center, ...center], center,
+      labelEligible,
+      ...(!labelEligible ? { geometryNote: 'Anotación sin nombre completo en la fuente; se conserva sin utilizarla como etiqueta.' } : {}),
     },
     geometry: { type: 'Point', coordinates: center },
   }
 }
 
+export function buildCoastalFeatures(names, beaches, previousIds = new Map()) {
+  return [
+    ...names.features.map(feature => {
+      const { name } = cartographicName(feature.properties.text)
+      return decoratePoint(feature, coastalKind({ ...feature, properties: { ...feature.properties, text: name } }), name, 'names-hydro-coast', previousIds)
+    }),
+    ...beaches.features.map(feature => decoratePoint(feature, 'beach', feature.properties.nombre, 'tourism-beach', previousIds)),
+  ]
+}
+
 async function main() {
   const [asturias, names, beaches] = await Promise.all([
     JSON.parse(await readFile(ASTURIAS_PATH, 'utf8')),
-    fetchCollection(endpoint('NombresGeograficos', 3, "layer IN ('050404','050408','050412')")),
-    fetchCollection(endpoint('Visor/Turismo', 2)),
+    fetchArcgisCollection(endpoint('NombresGeograficos', 3, "layer IN ('050404','050408','050412')"), fetchJson),
+    fetchArcgisCollection(endpoint('Visor/Turismo', 2), fetchJson),
   ])
   if (!names.features.length || !beaches.features.length) throw new Error('Fuente costera vacía; se conserva el snapshot anterior')
 
@@ -111,10 +105,7 @@ async function main() {
     return key ? [[key, properties.id]] : []
   }))
 
-  const generated = [
-    ...names.features.map((feature) => decoratePoint(feature, coastalKind(feature), feature.properties.text, 'names-hydro-coast', previousIds)),
-    ...beaches.features.map((feature) => decoratePoint(feature, 'beach', feature.properties.nombre, 'tourism-beach', previousIds)),
-  ].filter(Boolean)
+  const generated = buildCoastalFeatures(names, beaches, previousIds)
 
   const existing = asturias.features.filter((feature) => {
     const id = String(feature.properties?.id || '')
@@ -123,7 +114,15 @@ async function main() {
 
   const unique = new Map([...existing, ...generated].map((feature) => [feature.properties.id, feature]))
   asturias.features = [...unique.values()]
+  const manifestPath = path.join(ROOT, 'public', 'data', 'atlas', 'manifest.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  manifest.collections.physicalAsturias.sourceCoverage = {
+    ...manifest.collections.physicalAsturias.sourceCoverage,
+    'names-hydro-coast': { ...names.coverage, idNamespace: 'names-hydro-coast' },
+    'tourism-beach': { ...beaches.coverage, idNamespace: 'tourism-beach' },
+  }
   await writeFile(ASTURIAS_PATH, `${JSON.stringify(asturias)}\n`, 'utf8')
+  await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, 'utf8')
   process.stdout.write(`Costa física actualizada: ${generated.length} accidentes oficiales.\n`)
 }
 

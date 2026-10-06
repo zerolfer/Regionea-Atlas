@@ -60,6 +60,12 @@ export type AtlasEntity = {
   elevationM?: number | null
   lengthKm?: number | null
   minZoom?: number
+  labelEligible?: boolean
+  protectionType?: string
+  protectionZone?: string
+  protectionInstrument?: string
+  legacyIds?: string[]
+  memberIds?: string[]
   territoryIds?: string[]
   geometryRole?: 'area' | 'label' | 'line' | 'point'
   geometryNote?: string
@@ -77,6 +83,15 @@ export type DatasetCollection = {
   bounds: [number, number, number, number]
   minZoom: number
   maxZoom: number
+  sourceCoverage?: Record<string, {
+    sourceUrl: string
+    where: string
+    featureCount: number
+    downloadedAt: string
+    objectIdsSha256: string
+    idPrefix?: string
+    idNamespace?: string
+  }>
   riverCoverage?: {
     sourceUrl: string
     where: string

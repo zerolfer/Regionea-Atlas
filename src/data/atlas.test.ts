@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { isPhysicalEntity, normalizeSearch, searchEntities } from './atlas'
+import { isPhysicalEntity, normalizeSearch, searchEntities, loadAtlasData } from './atlas'
+import { vi } from 'vitest'
 import type { AtlasEntity } from '../types'
 
 const entities: AtlasEntity[] = [
@@ -19,6 +20,15 @@ const entities: AtlasEntity[] = [
 ]
 
 describe('catálogo del atlas', () => {
+  it('restaura una selección compartida con el ID antiguo de un parque', async () => {
+    const park = { ...entities[2], id: 'physical-as-protected-area-protected-2-1', legacyIds: ['old-park'], kind: 'protected-area' }
+    vi.stubGlobal('fetch', async (url: string) => ({ ok: true, json: async () => url.includes('catalog') ? { territories: [], physical: [park] } : {} }))
+    try { expect((await loadAtlasData()).entitiesById.get('old-park')?.id).toBe('physical-as-protected-area-protected-2-1') }
+    finally { vi.unstubAllGlobals() }
+  })
+  it('no ofrece fragmentos de anotación como nombres completos en el buscador', () => {
+    expect(searchEntities([{ ...entities[2], name: 'Sierra', labelEligible: false }], 'sierra')).toEqual([])
+  })
   it('normaliza diacríticos y mayúsculas para la búsqueda', () => {
     expect(normalizeSearch('  GIJÓN  ')).toBe('  gijon  ')
     expect(searchEntities(entities, 'xixon')).toEqual([entities[1]])

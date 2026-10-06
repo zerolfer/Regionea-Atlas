@@ -2,6 +2,17 @@ import { expect, it } from 'vitest'
 import { expression, featureFilter, validateStyleMin } from '@maplibre/maplibre-gl-style-spec'
 import { buildStyle } from './style'
 
+it('dibuja monumentos protegidos puntuales sin convertir vértices de polígonos en marcadores', () => {
+  const style = buildStyle('physical')
+  const points = style.layers.find(layer => layer.id === 'physical-protected-points')!
+  expect(points?.type).toBe('circle')
+  if (points.type !== 'circle') throw new Error('Expected protected point layer')
+  const filter = featureFilter(points.filter, 'filter').filter
+  expect(filter({ zoom: 13 }, { type: 'Point', properties: { kind: 'protected-area' } })).toBe(true)
+  expect(filter({ zoom: 13 }, { type: 'Polygon', properties: { kind: 'protected-area' } })).toBe(false)
+  expect(validateStyleMin(style)).toEqual([])
+})
+
 it('superpone PNOA transparente de España al acercarse sin pedirlo en plano ni sustituir la base mundial', () => {
   for (const mode of ['physical', 'political', 'transit'] as const) {
     const plain = buildStyle(mode, 'plan')

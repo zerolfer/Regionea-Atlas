@@ -44,6 +44,7 @@ export default function EntityPanel({ entity, editorial, source, datasetDate, pa
         {boundaryLabel && <p className={`boundary-status boundary-${entity.boundaryStatus}`}>{boundaryLabel}</p>}
         {entity.geometryRole === 'label' && <div className="boundary-note"><strong>Topónimo sin superficie delimitada.</strong> La fuente solo aporta una posición para el nombre, no los límites del accidente.</div>}
         {entity.geometryNote && <p className="boundary-note">{entity.geometryNote}</p>}
+        {entity.protectionType && <p className="boundary-note">Protección: {entity.protectionType}</p>}
         {editorial?.summary && <p className="standfirst">{editorial.summary}</p>}
         {entity.boundaryStatus === 'statistical' && <div className="boundary-note"><strong>Límite estadístico.</strong> No constituye un deslinde jurídico oficial.</div>}
         {(isTerritory || hasMetrics) && (

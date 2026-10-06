@@ -21,6 +21,10 @@ export async function loadAtlasData(signal?: AbortSignal): Promise<AtlasData> {
   const catalog = (await catalogResponse.json()) as { territories: AtlasEntity[]; physical: AtlasEntity[] }
   const editorial = (await editorialResponse.json()) as Record<string, EditorialEntry>
   const entitiesById = new Map([...catalog.territories, ...catalog.physical].map((entity) => [entity.id, entity]))
+  for (const entity of catalog.physical) for (const id of entity.legacyIds || []) {
+    if (entitiesById.has(id)) throw new Error('Alias de ID duplicado en el catálogo')
+    entitiesById.set(id, entity)
+  }
   return { manifest, ...catalog, entitiesById, editorial }
 }
 
@@ -32,7 +36,7 @@ export function searchEntities(entities: AtlasEntity[], query: string, limit = 1
   const normalizedQuery = normalizeSearch(query.trim())
   if (normalizedQuery.length < 2) return []
   return entities
-    .filter((entity) => !entity.geometryId)
+    .filter((entity) => !entity.geometryId && entity.labelEligible !== false)
     .map((entity) => {
       const names = [entity.name, entity.localName, ...entity.aliases].filter(Boolean).map((name) => normalizeSearch(String(name)))
       const exact = names.some((name) => name === normalizedQuery)

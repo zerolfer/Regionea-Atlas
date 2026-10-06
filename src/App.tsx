@@ -140,7 +140,7 @@ export default function App() {
   const searchItems = useMemo<SearchItem[]>(() => {
     if (mode === 'transit') return transitCatalog.items
     const entities = mode === 'physical' ? atlas?.physical : atlas?.territories
-    return (entities || []).filter((entity) => !entity.geometryId).map((entity) => ({
+    return (entities || []).filter((entity) => !entity.geometryId && entity.labelEligible !== false).map((entity) => ({
       id: entity.id,
       name: entity.name,
       aliases: [entity.localName || '', ...entity.aliases].filter(Boolean),

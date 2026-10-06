@@ -3,9 +3,12 @@ import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { beachDisplayName } from './sync-physical-coast.mjs'
 import { geometryRole, matchingCoastalArea } from './lib/coastal-areas.mjs'
+import { physicalLabelCollection as labelCollection } from './lib/physical-labels.mjs'
+import { promoteSnapshotFiles } from './lib/snapshot-publication.mjs'
 
 const ROOT = process.cwd()
 const ATLAS = path.join(ROOT, 'public', 'data', 'atlas')
+const publicationFiles = []
 
 function cleanName(value) {
   return String(value || '').replace(/\s+/g, ' ').trim()
@@ -13,15 +16,6 @@ function cleanName(value) {
 
 function normalize(value) {
   return cleanName(value).normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('es')
-}
-
-function usefulRangeName(value) {
-  const name = cleanName(value)
-  const tokens = name.split(' ').filter(Boolean)
-  const generic = new Set(['sierra', 'cordal', 'cordillera', 'monte', 'montes', 'pico', 'pena', 'peña', 'alto', 'collada', 'de', 'del', 'la', 'las', 'el', 'los'])
-  if (name.length < 3 || generic.has(normalize(name))) return false
-  if (tokens.length >= 2 && tokens.filter((token) => token.length === 1).length / tokens.length > 0.4) return false
-  return !/^(sierra|cordal|cordillera|monte|montes|pena|alto)( de| del| la| las| el| los)?$/i.test(normalize(name))
 }
 
 function bounds(features) {
@@ -38,32 +32,17 @@ async function read(relativePath) {
 
 async function write(relativePath, value) {
   const body = `${JSON.stringify(value)}\n`
-  await writeFile(path.join(ATLAS, relativePath), body, 'utf8')
+  const target = path.join(ATLAS, relativePath), temporary = `${target}.refine-${process.pid}.tmp`
+  await writeFile(temporary, body, 'utf8')
+  publicationFiles.push({ target, temporary })
   return { bytes: Buffer.byteLength(body), sha256: createHash('sha256').update(body).digest('hex') }
-}
-
-function labelCollection(features, include) {
-  const seen = new Set()
-  return {
-    type: 'FeatureCollection',
-    features: features.filter(include).filter((feature) => {
-      const key = `${feature.properties.kind}:${normalize(feature.properties.name)}`
-      if (!feature.properties.name?.trim() || !feature.properties.center || seen.has(key)) return false
-      seen.add(key)
-      return true
-    }).map((feature) => ({
-      type: 'Feature', id: feature.id, properties: feature.properties,
-      geometry: { type: 'Point', coordinates: feature.properties.center },
-    })),
-  }
 }
 
 const [asturias, europe, coastalAreas, catalog, manifest] = await Promise.all([
   read('physical/asturias.geojson'), read('physical/europe.geojson'), read('physical/coastal-areas.geojson'), read('catalog.json'), read('manifest.json'),
 ])
 
-const seenRanges = new Set()
-asturias.features = asturias.features.filter((feature) => {
+asturias.features.forEach((feature) => {
   feature.properties.name = cleanName(feature.properties.name)
   feature.properties.localName = cleanName(feature.properties.localName || feature.properties.name)
   if (feature.properties.kind === 'beach') {
@@ -71,15 +50,11 @@ asturias.features = asturias.features.filter((feature) => {
     feature.properties.slug = normalize(feature.properties.name).replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
     feature.properties.aliases = [...new Set([...(feature.properties.aliases || []), feature.properties.localName])].filter((name) => name !== feature.properties.name)
   }
-  if (feature.properties.kind !== 'range') return true
-  const key = normalize(feature.properties.name)
-  if (!usefulRangeName(feature.properties.name) || seenRanges.has(key)) return false
-  seenRanges.add(key)
-  return true
 })
 
+const protectedSites = new Map(asturias.features.filter(f => f.id.startsWith('physical-as-protected-site-')).map(f => [f.id, f]))
 for (const feature of [...asturias.features, ...europe.features, ...coastalAreas.features]) {
-  feature.properties.geometryRole = geometryRole(feature)
+  feature.properties.geometryRole = ['peak', 'range'].includes(feature.properties.kind) && feature.geometry.type === 'Point' ? 'label' : geometryRole(feature)
   const area = matchingCoastalArea(feature, coastalAreas.features)
   if (area) {
     feature.properties.geometryId = area.id
@@ -87,19 +62,19 @@ for (const feature of [...asturias.features, ...europe.features, ...coastalAreas
     area.properties.aliases = [...new Set([...area.properties.aliases, feature.properties.name,
       feature.properties.localName, ...(feature.properties.aliases || [])])].filter((name) => name && name !== area.properties.name)
   }
-  else delete feature.properties.geometryId
+  else if (!protectedSites.has(feature.properties.geometryId)) delete feature.properties.geometryId
 }
 const asturiasLabels = labelCollection(asturias.features, (feature) => feature.properties.kind !== 'river' && !feature.properties.geometryId)
 const europeLabels = labelCollection(europe.features, (feature) => feature.properties.kind !== 'river')
 const coastalLabels = labelCollection(coastalAreas.features, () => true)
-const areasById = new Map(coastalAreas.features.map((feature) => [feature.id, feature]))
+const areasById = new Map([...coastalAreas.features, ...protectedSites.values()].map((feature) => [feature.id, feature]))
 catalog.physical = [...europe.features, ...asturias.features, ...coastalAreas.features].map((feature) => {
   const area = areasById.get(feature.properties.geometryId)
   if (!area) return { ...feature.properties }
   // Keep every published gazetteer ID usable in shared URLs, while directing
   // selection/camera to the canonical named water surface. No duplicate search results.
   return { ...area.properties, id: feature.id, slug: feature.properties.slug, name: feature.properties.name,
-    localName: feature.properties.localName, aliases: feature.properties.aliases, geometryId: area.id }
+    localName: feature.properties.localName, aliases: feature.properties.aliases, legacyIds: feature.properties.legacyIds, memberIds: undefined, geometryId: area.id }
 })
 
 const asturiasFile = await write('physical/asturias.geojson', asturias)
@@ -130,5 +105,6 @@ manifest.collections.physicalCoastalAreasLabels = {
 manifest.version = new Date().toISOString().slice(0, 10)
 manifest.generatedAt = new Date().toISOString()
 await write('manifest.json', manifest)
+await promoteSnapshotFiles(publicationFiles)
 
 process.stdout.write(`Atlas físico refinado: ${asturias.features.length} accidentes y ${asturiasLabels.features.length + europeLabels.features.length} etiquetas únicas.\n`)

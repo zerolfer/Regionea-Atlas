@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import process from 'node:process'
 import { assertRouteClassification, TRANSIT_CLASSIFICATION_VERSION } from './lib/transit-classification.mjs'
+import { PHYSICAL_CORE_SOURCES } from './sync-atlas-data.mjs'
 
 const root = process.cwd()
 const atlasDir = path.join(root, 'public', 'data', 'atlas')
@@ -91,6 +92,11 @@ for (const [name, collection] of Object.entries(manifest.collections)) {
 const catalogEntities = [...catalog.territories, ...catalog.physical]
 const catalogIds = new Set(catalogEntities.map(({ id }) => id))
 assert(catalogIds.size === catalogEntities.length, 'El catálogo contiene IDs duplicados')
+const publicIds = new Set(catalogIds)
+for (const entity of catalog.physical) for (const alias of entity.legacyIds || []) {
+  assert(typeof alias === 'string' && !publicIds.has(alias), `${entity.id}: alias de ID duplicado`)
+  publicIds.add(alias)
+}
 assert(catalog.territories.filter(({ kind }) => kind === 'functional-region').length === 8, 'Deben existir 8 comarcas')
 assert(catalog.territories.filter(({ kind }) => kind === 'municipality').length === 78, 'Deben existir 78 concejos')
 assert(catalog.territories.filter(({ kind }) => kind === 'parish').length === 857, 'Deben existir 857 parroquias')
@@ -127,15 +133,17 @@ for (const entity of catalog.physical) {
     const area = catalog.physical.find(({ id }) => id === entity.geometryId)
     assert(area?.geometryRole === 'area' && !area.geometryId, `${entity.id}: referencia a superficie rota o encadenada`)
   }
+  if (entity.memberIds) assert(entity.memberIds.length > 1 && entity.memberIds.every(id => catalog.physical.find(e => e.id === id)?.geometryId === entity.id), `${entity.id}: zonificación agregada sin referencias completas`)
   assert(physicalKinds.has(entity.kind), `${entity.id}: tipo físico desconocido`)
   // SITPA publishes unnamed water bodies too. Keep their verified geometries;
   // do not fabricate a placename just to satisfy the catalogue.
-  assert(typeof entity.name === 'string' && (entity.name.trim() || ['lake', 'river'].includes(entity.kind)), `${entity.id}: topónimo físico vacío`)
+  assert(typeof entity.name === 'string', `${entity.id}: topónimo físico no válido`)
+  if (!entity.name.trim()) assert(entity.labelEligible === false || ['lake', 'river'].includes(entity.kind), `${entity.id}: nombre ausente sin advertencia de etiquetado`)
   assert(ids.has(entity.id), `${entity.id}: accidente sin geometría`)
   if (entity.kind === 'river' && entity.minZoom != null) {
     assert([7.5, 10, 12].includes(entity.minZoom) && entity.lengthKm >= 0 && entity.geometryRole === 'line', `${entity.id}: escala o geometría fluvial no válida`)
   }
-  if (entity.kind === 'beach') assert(/^playa(s)?\b/i.test(entity.name), `${entity.id}: playa sin prefijo identificativo`)
+  if (entity.kind === 'beach' && entity.name.trim()) assert(/^playa(s)?\b/i.test(entity.name), `${entity.id}: playa sin prefijo identificativo`)
 }
 const riverCoverage = manifest.collections.physicalAsturias?.riverCoverage
 if (riverCoverage) {
@@ -145,6 +153,25 @@ if (riverCoverage) {
   assert(createHash('sha256').update(JSON.stringify(objectIds)).digest('hex') === riverCoverage.objectIdsSha256, 'Red fluvial: IDs distintos del inventario oficial')
   assert(!Number.isNaN(Date.parse(riverCoverage.downloadedAt)) && riverCoverage.sourceUrl && riverCoverage.where, 'Red fluvial: procedencia o fecha de descarga ausente')
 }
+const coverage = manifest.collections.physicalAsturias?.sourceCoverage
+assert(coverage, 'Faltan inventarios de las fuentes físicas asturianas')
+for (const descriptor of PHYSICAL_CORE_SOURCES) {
+  const source = coverage[descriptor.namespace], prefix = `physical-as-${descriptor.kind}-${descriptor.namespace}-`
+  assert(source?.idPrefix === prefix && source.where === (descriptor.where || '1=1'), `${descriptor.namespace}: inventario o filtro incorrecto`)
+  const entries = catalog.physical.filter(entity => entity.id.startsWith(prefix))
+  const objectIds = entries.map(entity => Number(entity.id.slice(prefix.length))).sort((a, b) => a - b)
+  assert(entries.length === source.featureCount && objectIds.every(Number.isInteger), `${descriptor.namespace}: inventario incompleto`)
+  assert(createHash('sha256').update(JSON.stringify(objectIds)).digest('hex') === source.objectIdsSha256, `${descriptor.namespace}: IDs distintos del inventario oficial`)
+  assert(source.sourceUrl && !Number.isNaN(Date.parse(source.downloadedAt)), `${descriptor.namespace}: procedencia ausente`)
+}
+for (const namespace of ['names-hydro-coast', 'tourism-beach']) {
+  const source = coverage[namespace]
+  assert(source?.idNamespace === namespace, `${namespace}: inventario costero ausente`)
+  const pattern = new RegExp(`^physical-as-.+-${namespace}-(\\d+)$`)
+  const objectIds = catalog.physical.map(entity => entity.id.match(pattern)).filter(Boolean).map(match => Number(match[1])).sort((a, b) => a - b)
+  assert(objectIds.length === source.featureCount && createHash('sha256').update(JSON.stringify(objectIds)).digest('hex') === source.objectIdsSha256, `${namespace}: cobertura distinta de la fuente`)
+  assert(source.sourceUrl && !Number.isNaN(Date.parse(source.downloadedAt)), `${namespace}: procedencia ausente`)
+}
 assert(manifest.collections.physicalCoastalAreas && manifest.collections.physicalCoastalAreasLabels, 'Faltan superficies costeras o sus etiquetas')
 assert(catalog.physical.some(({ id, kind, geometryRole }) => id === 'physical-es-delta-ebro' && kind === 'delta' && geometryRole === 'area'), 'Falta la superficie del delta del Ebro')
 for (const name of ['physicalAsturiasLabels', 'physicalEuropeLabels']) {
@@ -152,6 +179,7 @@ for (const name of ['physicalAsturiasLabels', 'physicalEuropeLabels']) {
   if (!collection) continue
   const labels = await json(collection.url.replace('/data/atlas/', ''))
   assert(labels.features.every(({ properties }) => properties.kind !== 'river'), `${name}: río etiquetado en el centro de una caja en lugar de sobre su recorrido`)
+  assert(labels.features.every(({ properties }) => properties.labelEligible !== false && properties.name?.trim()), `${name}: fragmento o nombre ausente publicado como etiqueta`)
 }
 
 const transitManifest = await json('transit/manifest.json')

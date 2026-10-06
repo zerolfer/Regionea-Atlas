@@ -199,8 +199,13 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-protected', type: 'fill', source: 'physical-asturias', minzoom: 7.5,
-      filter: ['==', ['get', 'kind'], 'protected-area'],
+      filter: ['all', ['==', ['get', 'kind'], 'protected-area'], ['!', ['has', 'geometryId']]],
       paint: { 'fill-color': '#6f8d64', 'fill-opacity': 0.18, 'fill-outline-color': '#52724d' },
+    },
+    {
+      id: 'physical-protected-points', type: 'circle', source: 'physical-asturias', minzoom: 11,
+      filter: ['all', ['==', ['get', 'kind'], 'protected-area'], ['==', ['geometry-type'], 'Point']],
+      paint: { 'circle-color': '#527751', 'circle-radius': 4, 'circle-stroke-color': '#f6f1e7', 'circle-stroke-width': 1 },
     },
     {
       id: 'physical-coast-areas', type: 'fill', source: 'physical-asturias', minzoom: 8,
@@ -219,7 +224,7 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-peaks', type: 'circle', source: 'physical-asturias', minzoom: 9,
-      filter: ['==', ['get', 'kind'], 'peak'],
+      filter: ['all', ['==', ['get', 'kind'], 'peak'], ['<=', ['coalesce', ['get', 'minZoom'], 9], ['zoom']]],
       paint: {
         'circle-color': '#342d27', 'circle-stroke-color': '#f6f1e7', 'circle-stroke-width': 1,
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 9, 2.3, 13, 4.5],
@@ -237,7 +242,7 @@ function physicalLayers(): LayerSpecification[] {
     },
     {
       id: 'physical-point-labels', type: 'symbol', source: 'physical-asturias-labels', minzoom: 9.4,
-      filter: ['in', ['get', 'kind'], ['literal', ['peak', 'range']]],
+      filter: ['all', ['in', ['get', 'kind'], ['literal', ['peak', 'range']]], ['<=', ['coalesce', ['get', 'minZoom'], 9], ['zoom']]],
       layout: {
         'text-field': ['get', 'name'], 'text-font': ['Noto Sans Regular'],
         'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 13, 13],
@@ -509,7 +514,7 @@ export const PHYSICAL_INTERACTIVE_LAYERS = [
   'physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-ranges', 'physical-europe-valleys',
   'physical-europe-coasts', 'physical-europe-peaks', 'physical-europe-labels',
   'physical-europe-marine-labels', 'physical-europe-river-labels',
-  'physical-rivers', 'physical-water', 'physical-protected', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points', 'physical-peaks',
+  'physical-rivers', 'physical-water', 'physical-protected', 'physical-protected-points', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points', 'physical-peaks',
   'physical-river-labels', 'physical-point-labels', 'physical-coast-labels', 'physical-area-labels',
   'physical-selected-river-label', 'physical-europe-selected-river-label',
 ]

@@ -4,6 +4,9 @@ import http from 'node:http'
 import https from 'node:https'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { fetchArcgisCollection } from './lib/arcgis-collection.mjs'
+import { cartographicName } from './lib/physical-labels.mjs'
+import { aggregateProtectedSites } from './lib/protected-sites.mjs'
 
 const ROOT = process.cwd()
 const OUTPUT = path.join(ROOT, 'public', 'data', 'atlas')
@@ -511,35 +514,8 @@ async function main() {
     }
   }
 
-  const protectedLayerIds = [1, 2, 3, 6, 7]
-  const [peaksRaw, rangesRaw, riversRaw, reservoirsRaw, lakesRaw, parksRaw] = await Promise.all([
-    fetchJson(arcgisQuery('NombresGeograficos', 2, "layer='030422' AND elevation>=1000", 'objectid,text,elevation,layer,descripción')),
-    fetchJson(arcgisQuery('NombresGeograficos', 2, "layer='030424'", 'objectid,text,elevation,layer,descripción')),
-    fetchRiverCollection(fetchJson),
-    fetchJson(arcgisQuery('Hidrografia', 1)),
-    fetchJson(arcgisQuery('Hidrografia', 2)),
-    Promise.all(protectedLayerIds.map((layer) => fetchJson(arcgisQuery('EspaciosProtegidos', layer)))),
-  ])
-
-  const physical = [
-    ...peaksRaw.features.map((feature) => physicalFeature(feature, 'peak', feature.properties.text, {
-      elevationM: roundMetric(feature.properties.elevation),
-    }, 0, 'names-030422')),
-    ...uniqueByName(rangesRaw.features
-      .filter((feature) => usefulGeographicName(feature.properties.text))
-      .map((feature) => physicalFeature(feature, 'range', feature.properties.text, {}, 0, 'names-030424'))),
-    ...buildRiverFeatures(riversRaw.features),
-    ...reservoirsRaw.features.map((feature) => physicalFeature(feature, 'reservoir', feature.properties.nombre || feature.properties.NOMBRE, {}, 0, 'hydro-1')),
-    ...lakesRaw.features.map((feature) => physicalFeature(feature, 'lake', feature.properties.nombre || feature.properties.NOMBRE, {}, 0, 'hydro-2')),
-    ...parksRaw.flatMap((group, index) => group.features.map((feature) => physicalFeature(
-      feature,
-      'protected-area',
-      feature.properties.nombre || feature.properties.NOMBRE || feature.properties.dl_nombre,
-      { protectionType: feature.properties.tipo || feature.properties.TIPO || null },
-      0.0002,
-      `protected-${protectedLayerIds[index]}`,
-    ))),
-  ].filter((feature) => feature.properties.name || feature.properties.kind === 'river')
+  const [core, riversRaw] = await Promise.all([fetchPhysicalCore(fetchJson), fetchRiverCollection(fetchJson)])
+  const physical = [...core.features, ...buildRiverFeatures(riversRaw.features)]
 
   const [naturalRiversRaw, naturalLakesRaw, naturalRegionsRaw, naturalPeaksRaw] = await Promise.all([
     fetchJson(`${SOURCES.naturalEarth}/ne_50m_rivers_lake_centerlines.geojson`),
@@ -620,6 +596,7 @@ async function main() {
   }
   Object.entries(collectionMetadata).forEach(([name, metadata]) => Object.assign(files[name], metadata))
   files.physicalAsturias.riverCoverage = riversRaw.coverage
+  files.physicalAsturias.sourceCoverage = core.coverage
 
   const manifest = {
     version: VERSION,
@@ -696,39 +673,19 @@ function titleCase(value) {
     .replace(/(^|[\s/-])\p{L}/gu, (letter) => letter.toLocaleUpperCase('es'))
 }
 
-function usefulGeographicName(value) {
-  const name = titleCase(value)
-  const tokens = name.split(' ').filter(Boolean)
-  const normalized = name.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('es')
-  const generic = new Set(['sierra', 'cordal', 'cordillera', 'monte', 'montes', 'pico', 'pena', 'alto', 'collada', 'de', 'del', 'la', 'las', 'el', 'los'])
-  if (name.length < 3 || generic.has(normalized)) return false
-  if (tokens.length >= 2 && tokens.filter((token) => token.length === 1).length / tokens.length > 0.4) return false
-  return !/^(sierra|cordal|cordillera|monte|montes|pena|alto)( de| del| la| las| el| los)?$/i.test(normalized)
-}
-
-function uniqueByName(features) {
-  const seen = new Set()
-  return features.filter((feature) => {
-    const key = slugify(feature.properties.name)
-    if (!key || seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-}
-
 function roundMetric(value) {
   return Number.isFinite(Number(value)) ? Math.round(Number(value) * 10) / 10 : null
 }
 
 function physicalFeature(feature, kind, name, extras = {}, tolerance = 0, namespace = 'source') {
   const safeName = titleCase(name)
-  const objectId = feature.properties.objectid || feature.properties.OBJECTID
+  const objectId = feature.properties.objectid ?? feature.properties.OBJECTID
   const fallbackId = createHash('sha1')
     .update(JSON.stringify([safeName, boundsForGeometry(feature.geometry)]))
     .digest('hex')
     .slice(0, 12)
   return decorate(feature, {
-    id: `physical-as-${kind}-${namespace}-${objectId || fallbackId}`,
+    id: `physical-as-${kind}-${namespace}-${objectId ?? fallbackId}`,
     slug: slugify(safeName),
     name: safeName,
     localName: safeName,
@@ -742,6 +699,57 @@ function physicalFeature(feature, kind, name, extras = {}, tolerance = 0, namesp
 
 const RIVER_TYPES = ['Línea de eje de río', 'Curso fluvial oculto']
 const RIVER_WHERE = "tipo IN ('Línea de eje de río','Curso fluvial oculto')"
+
+export const PHYSICAL_CORE_SOURCES = [
+  { service: 'NombresGeograficos', layer: 2, where: "layer='030422'", namespace: 'names-030422', kind: 'peak' },
+  { service: 'NombresGeograficos', layer: 2, where: "layer='030424'", namespace: 'names-030424', kind: 'range' },
+  { service: 'Hidrografia', layer: 1, namespace: 'hydro-1', kind: 'reservoir' },
+  { service: 'Hidrografia', layer: 2, namespace: 'hydro-2', kind: 'lake' },
+  ...[[1, 'Parque nacional'], [2, 'Parque natural'], [3, 'Reserva natural'], [5, 'Monumento natural'],
+    [6, 'Monumento natural'], [7, 'Paisaje protegido'], [13, 'LIC'], [14, 'ZEPA'], [15, 'ZEC'],
+    [17, 'Humedal Ramsar'], [18, 'Reserva de la biosfera']].map(([layer, protectionType]) => ({
+    service: 'EspaciosProtegidos', layer, namespace: `protected-${layer}`, kind: 'protected-area', protectionType,
+  })),
+]
+
+export function buildPhysicalCoreFeatures(descriptor, raw) {
+  return raw.features.map(feature => {
+    const p = feature.properties, id = p[raw.objectIdField || 'objectid']
+    if (!Number.isInteger(id)) throw new Error('Registro físico sin ID oficial')
+    const original = p.text ?? p.nombre ?? p.NOMBRE ?? p.dl_nombre ?? p.site_name ?? p.ram_name ?? ''
+    const orographic = ['peak', 'range'].includes(descriptor.kind)
+    const naming = orographic ? cartographicName(original) : { name: original, labelEligible: Boolean(String(original).trim()) }
+    const extras = {
+      labelEligible: naming.labelEligible, boundaryStatus: 'reference',
+      ...(orographic ? {
+        geometryRole: 'label',
+        geometryNote: `${descriptor.kind === 'peak' ? 'Topónimo de pico, monte o collado' : 'Anotación de sierra o área extensa'} según la fuente: posición del nombre, no delimitación del accidente.${naming.labelEligible ? '' : ' Texto ausente o fragmentario; se conserva el registro sin usarlo como etiqueta.'}`,
+      } : {}),
+      ...(descriptor.kind === 'peak' ? { elevationM: roundMetric(p.elevation), minZoom: p.elevation >= 1000 ? 9 : 11 } : {}),
+      ...(descriptor.kind === 'protected-area' ? {
+        protectionType: p.tipo || p.TIPO || descriptor.protectionType,
+        protectionZone: String(p.zona || p.zonif || '').trim(), protectionInstrument: String(p.ig || '').trim(),
+        geometryNote: `${descriptor.protectionType}${p.site_code ? ` (${p.site_code})` : p.ram_code ? ` (${p.ram_code})` : ''}.${p.zona || p.zonif ? ` Zonificación: ${p.zona || p.zonif}.` : ''}${p.ig?.trim() ? ` Instrumento indicado por la fuente: ${p.ig.trim()}.` : ''}`,
+      } : {}),
+    }
+    const result = physicalFeature({ ...feature, properties: { ...p, objectid: id } }, descriptor.kind, naming.name, extras, 0, descriptor.namespace)
+    if (['protected-1', 'protected-2'].includes(descriptor.namespace) && p.objectid == null && p.OBJECTID == null) {
+      result.properties.legacyIds = [physicalFeature(feature, descriptor.kind, original, {}, 0, descriptor.namespace).id]
+    }
+    if (String(original).trim() && titleCase(original) !== result.properties.name) result.properties.aliases = [titleCase(original)]
+    return result
+  })
+}
+
+export async function fetchPhysicalCore(request = fetchJson) {
+  const collections = await Promise.all(PHYSICAL_CORE_SOURCES.map(async descriptor => {
+    const raw = await fetchArcgisCollection(arcgisQuery(descriptor.service, descriptor.layer, descriptor.where), request)
+    const features = buildPhysicalCoreFeatures(descriptor, raw)
+    return { descriptor, features, coverage: { ...raw.coverage, idPrefix: `physical-as-${descriptor.kind}-${descriptor.namespace}-` } }
+  }))
+  const features = collections.flatMap(c => c.features)
+  return { features: [...features, ...aggregateProtectedSites(features)], coverage: Object.fromEntries(collections.map(c => [c.descriptor.namespace, c.coverage])) }
+}
 
 export async function fetchRiverCollection(request, batchSize = 1000) {
   if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 1000) throw new Error('Lote fluvial no válido')
@@ -882,7 +890,7 @@ export function naturalPhysical(feature, kind, extras = {}) {
 const isDirectRun = process.argv[1]
   && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 
-export { fetchJson, simplifyGeometry }
+export { fetchJson, simplifyGeometry, fetchArcgisCollection }
 
 if (isDirectRun) {
   main().catch((error) => {

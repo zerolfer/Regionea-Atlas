@@ -112,7 +112,19 @@ Golfos, bahías, deltas y rías se dibujan y seleccionan como superficies cuando
 
 `geometryId` conserva IDs antiguos de topónimos al dirigir selección y encuadre hacia una superficie canónica del catálogo. Debe resolver a una entidad `area` sin otra referencia: no se permiten cadenas. El catálogo antiguo adopta bbox, fuente, fecha y nota de esa superficie; el importador conserva su nombre como alias en la entidad canónica. La búsqueda excluye duplicados con `geometryId`, pero las URLs antiguas siguen funcionando. La asociación exige mismo tipo, nombre normalizado, proximidad y una sola coincidencia; una ambigüedad no se resuelve automáticamente.
 
-### Red fluvial asturiana
+### Inventarios físicos asturianos
+
+El resto del detalle físico usa también inventarios completos. `sourceCoverage` registra por namespace URL, filtro, recuento, fecha de descarga, SHA-256 de los IDs oficiales ordenados e `idPrefix` (núcleo) o `idNamespace` (costa/playas). `scripts/lib/arcgis-collection.mjs` verifica IDs y recuentos antes/después, descarga lotes de hasta 1.000 y respeta `objectIdFieldName`, incluido `objectid_1`. No se excluyen registros por altitud o ausencia de nombre; las respuestas truncadas, duplicadas o modificadas abortan la actualización.
+
+La capa `030422` contiene anotaciones de picos, montes o collados y `030424` de sierras o áreas extensas. La ficha aclara que el punto es la posición del topónimo, no una delimitación ni necesariamente la cima. `labelEligible: false` conserva textos ausentes o claramente fragmentarios sin usarlos en etiquetas/búsqueda. `cartographicName` recompone letras espaciadas solo dentro de un mismo registro cuando existe separación entre palabras; no junta textos de registros vecinos. Los homónimos conservan IDs y etiquetas independientes; MapLibre resuelve las colisiones en pantalla.
+
+Protección incluye las capas 1, 2, 3, 5, 6, 7, 13, 14, 15, 17 y 18: parques, reservas, monumentos puntuales/poligonales, paisajes, LIC, ZEPA, ZEC, Ramsar y biosfera. `protectionType`, `protectionZone` y `protectionInstrument` conservan lo indicado por la fuente. No se confunden hábitats, vegetación marina ni usos del suelo con figuras de protección.
+
+Los parques naturales y reservas de biosfera zonificados se agrupan por categoría de fuente, nombre oficial e instrumento. `aggregateProtectedSites` une sus polígonos sin rellenar huecos ni conectar partes separadas; no mezcla parque, ZEC/ZEPA y biosfera. La entidad `physical-as-protected-site-…` conserva `memberIds`; los originales permanecen con `geometryId` hacia el conjunto y siguen formando parte del inventario. Las zonas no se simplifican independientemente antes de unirlas. Una identidad ambigua entre instrumentos aborta la agregación.
+
+`legacyIds` son alias de identificador, no de nombre. Conservan los enlaces de parques que antes usaban un hash por no reconocer `objectid_1`. `loadAtlasData` los incorpora a `entitiesById` sin duplicar entidades; el validador exige que no coincidan entre sí ni con un ID canónico. El refinado debe conservarlos también en registros que apuntan a superficies agregadas.
+
+#### Especificación fluvial
 
 La capa 4 de Hidrografía SITPA aporta registros de eje de río y curso fluvial oculto. Se importan ambos tipos completos, incluidos arroyos cortos y registros sin topónimo; se excluyen canales, acequias, márgenes e islas fluviales porque no representan esos ejes naturales. «Completa» se refiere al inventario de esta fuente, no a una garantía de que todo cauce existente esté cartografiado.
 

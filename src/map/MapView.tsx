@@ -68,7 +68,7 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
     relief: ['physical-europe-ranges', 'physical-ranges'],
     peaks: ['physical-europe-peaks', 'physical-peaks'],
     hydrography: ['physical-europe-rivers', 'physical-europe-lakes', 'physical-europe-river-labels', 'physical-rivers', 'physical-water'],
-    valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts', 'physical-europe-marine-labels', 'physical-coastal-areas', 'physical-coastal-labels', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points'], protected: ['physical-protected'],
+    valleys: ['physical-europe-valleys'], coast: ['physical-europe-coasts', 'physical-europe-marine-labels', 'physical-coastal-areas', 'physical-coastal-labels', 'physical-coast-areas', 'physical-coast-lines', 'physical-coast-points'], protected: ['physical-protected', 'physical-protected-points'],
   }
   Object.entries(groups).forEach(([filter, layers]) => {
     layers.forEach((layer) => {
@@ -85,7 +85,7 @@ function applyPhysicalFilters(map: Map, filters: Set<PhysicalFilter>) {
       ...(filters.has('relief') ? ['range'] : []),
       ...(filters.has('peaks') ? ['peak'] : []),
     ]
-    map.setFilter('physical-point-labels', ['in', ['get', 'kind'], ['literal', pointKinds]] as FilterSpecification)
+    map.setFilter('physical-point-labels', ['all', ['in', ['get', 'kind'], ['literal', pointKinds]], ['<=', ['coalesce', ['get', 'minZoom'], 9], ['zoom']]] as FilterSpecification)
   }
   if (map.getLayer('physical-coast-labels')) map.setLayoutProperty('physical-coast-labels', 'visibility', filters.has('coast') ? 'visible' : 'none')
   if (map.getLayer('physical-area-labels')) {

@@ -2,6 +2,8 @@
 
 ## Comandos y artefactos
 
+Al ampliar una capa física, usar `fetchArcgisCollection`, conservar todos sus IDs y publicar `sourceCoverage`; no confundir filtros de representación con filtros de descarga. `objectIdFieldName` puede ser `objectid_1`. Los registros sin nombre o fragmentarios permanecen con `labelEligible: false`; nunca deduplicar entidades por nombre global. Las clases `030422`/`030424` son anotaciones, no polígonos de montaña. Para agregar áreas se exige una relación oficial de zonificación, categoría y espacio común; no agrupar por proximidad. Conservar `legacyIds`, `geometryId` y `memberIds` durante el refinado. Véase [contratos](contracts.md).
+
 ```bash
 npm ci
 npm run data:sync       # descarga territorio/físico y reconstruye todo lo derivado

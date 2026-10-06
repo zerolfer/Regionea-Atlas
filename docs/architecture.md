@@ -105,6 +105,12 @@ La cámara admite hasta 80°. Al activar 3D desde una vista casi cenital se anim
 
 Para ampliar el proveedor: verificar primero licencia, CORS, límites de cobertura/zoom, atribución, fecha, resolución y cuotas; actualizar `basemap.ts`, las capas raster de `style.ts` y las notas del selector. Mantener la API `MapAppearance` y la URL, salvo migración documentada. Ampliar `basemap.test.ts` (validación real de estilos, orden, límites y exclusión de raster en plano), probar la caída de detalle y una tesela real, y repetir QA móvil/escritorio. PNOA inicia las superposiciones regionales; otras coberturas y fotogrametría siguen pendientes. El zoom máximo de cámara es 19.
 
+## Cobertura física asturiana
+
+`fetchPhysicalCore`/`buildPhysicalCoreFeatures` y `sync-physical-core.mjs` importan inventarios completos de las dos clases orográficas, lagos, embalses y figuras de protección. El descargador compartido `lib/arcgis-collection.mjs` verifica IDs/recuentos y evita el límite implícito de 1.000; costa también lo utiliza. `lib/physical-labels.mjs` conserva homónimos y evita etiquetar fragmentos. `lib/protected-sites.mjs` agrupa exclusivamente zonificaciones oficiales del mismo espacio y categoría. Los originales conservan IDs y referencias; `legacyIds` permite restaurar enlaces anteriores.
+
+La importación completa no implica dibujar todo desde lejos. Las cumbres menores aparecen desde zoom 11 y las mayores desde 9; los monumentos puntuales desde 11. El coste de descargar el snapshot monolítico permanece y debe medirse en móviles reales; no se ha introducido un backend nuevo.
+
 ## API serverless
 
 - `GET /api/transporte/renfe/realtime`: normaliza alertas, posiciones y actualizaciones; usa caché de proceso de 15 segundos y cabecera CDN `s-maxage=15`.
