@@ -5,10 +5,10 @@
 <title>Regionea · Movimiento del logo</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#29251f;background:#f7f2e8}body{max-width:960px;margin:48px auto;padding:0 24px}h1{font:700 32px Georgia,serif}p{line-height:1.6;color:#716b62}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));justify-content:center;gap:24px}.card{background:#fffdf8;border:1px solid #d8d0c3;border-radius:20px;padding:28px;text-align:center}.logo{width:min(100%,230px);height:auto;color:var(--ink,#b35e37)}.rim,.handle{stroke-dasharray:1;stroke-dashoffset:1}.rim{visibility:hidden;stroke-linecap:round;animation:ringDraw 1.1s cubic-bezier(.4,0,.2,1) .3s forwards}.rim.is-complete{animation:none;visibility:visible;stroke-linecap:butt;stroke-dasharray:none;stroke-dashoffset:0}.handle{animation:draw .3s ease-out forwards}.inside{opacity:1}@keyframes draw{to{stroke-dashoffset:0}}@keyframes ringDraw{0%{visibility:hidden;stroke-dashoffset:1}0.01%{visibility:visible;stroke-dashoffset:.9999}100%{visibility:visible;stroke-dashoffset:0}}button{font:inherit;border:1px solid #d8d0c3;background:#fffdf8;border-radius:10px;padding:10px 16px;cursor:pointer}button:focus-visible{outline:3px solid #326b89;outline-offset:3px}.controls{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0}button[aria-pressed=true]{background:#29251f;color:#fffdf8}.small{width:34px;height:34px;display:block;margin:20px auto 0}footer{font-size:13px;color:#716b62;margin-top:24px}.loading .rim{visibility:visible;stroke-linecap:round;stroke-dasharray:.03 .97;stroke-dashoffset:0;animation:loadingStretch 1.4s cubic-bezier(.4,0,.2,1) infinite}.loading-rotor{transform-origin:64px 64px;animation:loadingRotate 1.4s linear infinite}.loading .handle{animation:none;stroke-dasharray:none;stroke-dashoffset:0}@keyframes loadingStretch{0%{stroke-dasharray:.03 .97;stroke-dashoffset:0}50%{stroke-dasharray:.92 .08;stroke-dashoffset:-.08}100%{stroke-dasharray:.03 .97;stroke-dashoffset:-.97}}@keyframes loadingRotate{to{transform:rotate(360deg)}}@media(max-width:760px){.grid{grid-template-columns:1fr}body{margin-top:24px}}@media(prefers-reduced-motion:reduce){.loading-rotor{animation:none;transform:none}.rim,.handle,.inside,.loading .rim,.loading .handle{animation:none;visibility:visible;opacity:1;stroke-dasharray:none;stroke-dashoffset:0}}
-</style>
+.card.action .rim{animation:none;visibility:visible;stroke-dasharray:none;stroke-dashoffset:0}.card.action .handle{animation:none;stroke-dasharray:none;stroke-dashoffset:0}.wave{transform-origin:64px 64px;opacity:0;animation:locateWave 1.2s ease-out forwards}.selection .pupil-ring{transform-origin:64px 63px;animation:selectPulse .6s ease-in-out}.press .logo{transform-origin:center;animation:pressPulse .35s ease-out}.mode .logo{animation:modeColor 3s ease-in-out forwards}.completion .rim{visibility:visible;stroke-dasharray:.03 .97;animation:loadingStretch 1.4s cubic-bezier(.4,0,.2,1),completeDraw .6s ease-out 1.4s forwards}.completion .loading-rotor{animation:loadingRotate 1.4s linear forwards}.completion .handle{animation:none;stroke-dasharray:none;stroke-dashoffset:0}.repeat-card{margin-top:20px}.wave{pointer-events:none}@keyframes locateWave{0%{opacity:0;transform:scale(.7)}10%{opacity:.65}100%{opacity:0;transform:scale(2.5)}}@keyframes selectPulse{50%{transform:scale(.88)}100%{transform:scale(1)}}@keyframes pressPulse{40%{transform:scale(.94)}100%{transform:scale(1)}}@keyframes modeColor{0%,15%{color:#b35e37}45%,55%{color:#4e765c}85%,100%{color:#326b89}}@keyframes completeDraw{0%{stroke-dasharray:.03 .97;stroke-dashoffset:0}100%{stroke-dasharray:1.01 1;stroke-dashoffset:0}}@media(prefers-reduced-motion:reduce){.wave{animation:none;opacity:0}.selection .pupil-ring,.press .logo,.mode .logo,.completion .loading-rotor{animation:none;transform:none}.completion .rim{animation:none;visibility:visible;stroke-dasharray:none;stroke-dashoffset:0}}</style>
 <h1>Regionea · Animaciones del logo</h1>
 <p>El selector cambia el círculo, el palito y la forma exterior del símbolo. La pupila conserva la tinta oscura; el fondo y los huecos permanecen en crema.</p>
-<div class="controls" aria-label="Color del logo"><button data-color="original" aria-pressed="false">Original</button><button data-color="#b35e37" aria-pressed="true">Terracota</button><button data-color="#4e765c" aria-pressed="false">Verde</button><button data-color="#326b89" aria-pressed="false">Azul</button><button id="replay">Repetir bienvenida</button></div>
+<div class="controls" aria-label="Color del logo"><button data-color="original" aria-pressed="false">Original</button><button data-color="#b35e37" aria-pressed="true">Terracota</button><button data-color="#4e765c" aria-pressed="false">Verde</button><button data-color="#326b89" aria-pressed="false">Azul</button><button id="replay">Repetir todas</button></div>
 <main class="grid"><section class="card"><h2>Terracota</h2><svg class="logo original" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Logo original animado">
 
   <circle class="rim" pathLength="1" transform="rotate(48.09 64 64)" cx="64" cy="64" r="56" fill="none" stroke="currentColor" stroke-width="5"/>
@@ -31,31 +31,35 @@
 <p>Crema, terracota y tinta originales.</p></section></template>
 <script>
 const grid=document.querySelector('.grid');
-
 const originalTemplate=document.querySelector('#original-logo').content.querySelector('svg').cloneNode(true);
 let selectedColor='#b35e37';
-function render(){
-  grid.replaceChildren();
-  [{name:'Bienvenida',loading:false,description:'El palito nace del interior y dibuja el círculo exterior.'},{name:'Cargando',loading:true,description:'El arco gira, crece y se contrae de forma continua; el interior permanece fijo.'}].forEach((motion,index)=>{
-    const card=document.createElement('section');card.className='card'+(motion.loading?' loading':'');
-    const title=document.createElement('h2');title.textContent=motion.name;card.append(title);
-    const svg=originalTemplate.cloneNode(true);
-    svg.setAttribute('aria-label',motion.name+' · logo animado');
-    if(selectedColor!=='original'){
-      svg.querySelector('.rim').setAttribute('stroke',selectedColor);
-      svg.querySelector('.handle').setAttribute('stroke',selectedColor);
-      svg.querySelector('path[d^="M27"]').setAttribute('fill',selectedColor);
-    }
-        if(motion.loading){const rim=svg.querySelector('.rim');const rotor=document.createElementNS('http://www.w3.org/2000/svg','g');rotor.classList.add('loading-rotor');rim.replaceWith(rotor);rotor.append(rim)}
-    card.append(svg);
-    const description=document.createElement('p');description.textContent=motion.description;card.append(description);
-    const small=svg.cloneNode(true);small.classList.add('small');small.setAttribute('aria-label',motion.name+' a 34 píxeles');
-    card.append(small);grid.append(card);
-  });
+const motions=[
+{key:'welcome',name:'Bienvenida',description:'El palito nace del interior y dibuja el círculo exterior.'},
+{key:'loading',name:'Cargando',description:'El arco gira, crece y se contrae; el interior permanece fijo.'},
+{key:'locate',name:'Localizar',description:'Una onda se expande desde el lugar hacia su entorno.'},
+{key:'selection',name:'Selección',description:'El anillo interior se contrae y recupera su tamaño.'},
+{key:'mode',name:'Cambio de modo',description:'Terracota → verde → azul. La pupila conserva su tinta.'},
+{key:'completion',name:'Carga completada',description:'Una vuelta de carga enlaza con el cierre del círculo.'},
+{key:'press',name:'Pulsación',description:'El símbolo cede ligeramente y vuelve a su tamaño.'}
+];
+function createCard(motion){
+const card=document.createElement('section');card.className='card '+motion.key+(['locate','selection','mode','press'].includes(motion.key)?' action':'');card.dataset.motion=motion.key;
+const title=document.createElement('h2');title.textContent=motion.name;card.append(title);
+const svg=originalTemplate.cloneNode(true);svg.setAttribute('aria-label',motion.name+' · logo animado');
+svg.style.setProperty('--ink',selectedColor==='original'?'#29251f':selectedColor);
+const rim=svg.querySelector('.rim'),handle=svg.querySelector('.handle'),outer=svg.querySelector('path[d^="M27"]');
+svg.querySelector('path[d^="M49"]').classList.add('pupil-ring');
+if(selectedColor!=='original'||motion.key==='mode'){rim.setAttribute('stroke','currentColor');handle.setAttribute('stroke','currentColor');outer.setAttribute('fill','currentColor')}
+if(['loading','completion'].includes(motion.key)){const rotor=document.createElementNS('http://www.w3.org/2000/svg','g');rotor.classList.add('loading-rotor');rim.replaceWith(rotor);rotor.append(rim)}
+if(motion.key==='locate'){const wave=document.createElementNS('http://www.w3.org/2000/svg','circle');wave.classList.add('wave');wave.setAttribute('cx','64');wave.setAttribute('cy','64');wave.setAttribute('r','22');wave.setAttribute('fill','none');wave.setAttribute('stroke','currentColor');wave.setAttribute('stroke-width','2');svg.append(wave)}
+card.append(svg);const description=document.createElement('p');description.textContent=motion.description;card.append(description);
+const small=svg.cloneNode(true);small.classList.add('small');small.setAttribute('aria-label',motion.name+' a 34 píxeles');card.append(small);
+const button=document.createElement('button');button.className='repeat-card';button.textContent=motion.key==='loading'?'Reiniciar':'Repetir';button.addEventListener('click',()=>card.replaceWith(createCard(motion)));card.append(button);return card;
 }
-grid.addEventListener('animationend',event=>{if(event.animationName==='ringDraw'&&event.target.classList.contains('rim'))event.target.classList.add('is-complete')});
+function render(){grid.replaceChildren(...motions.map(createCard))}
+grid.addEventListener('animationend',event=>{if(['ringDraw','completeDraw'].includes(event.animationName)&&event.target.classList.contains('rim')){event.target.classList.add('is-complete');if(event.animationName==='completeDraw'){event.target.style.animation='none';event.target.style.strokeDasharray='none';event.target.style.strokeDashoffset='0'}}});
 document.querySelectorAll('[data-color]').forEach(button=>button.addEventListener('click',()=>{selectedColor=button.dataset.color;document.querySelectorAll('[data-color]').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));render()}));
-document.querySelector('#replay').addEventListener('click',()=>{document.querySelectorAll('.card:not(.loading) .logo').forEach(svg=>{const copy=svg.cloneNode(true);copy.querySelector('.rim').classList.remove('is-complete');svg.replaceWith(copy)})});
+document.querySelector('#replay').addEventListener('click',render);
 render();
 </script>
 </html>
