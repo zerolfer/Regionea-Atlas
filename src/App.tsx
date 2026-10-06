@@ -8,6 +8,7 @@ import PanelHeader from './components/PanelHeader'
 import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
 import MapLayers from './components/MapLayers'
+import FilterButton from './components/FilterButton'
 import SearchBox from './components/SearchBox'
 import InstallPrompt from './components/InstallPrompt'
 import Toast from './components/Toast'
@@ -304,6 +305,10 @@ export default function App() {
     })
   }
 
+  function isolateFilter(filter: PhysicalFilter) {
+    setPhysicalFilters((current) => new Set(current.size === 1 && current.has(filter) ? visiblePhysicalFilters : [filter]))
+  }
+
   function locate(showFeedback = true) {
     if (!navigator.geolocation) { setToast('Este navegador no permite utilizar la ubicación'); return }
     if (showFeedback) setToast('Buscando tu territorio…')
@@ -334,6 +339,18 @@ export default function App() {
       else modes.add(transportMode)
       return { ...current, modes }
     })
+  }
+
+  function isolateTransitProvider(provider: string) {
+    setTransitFilters((current) => ({ ...current,
+      providers: new Set(current.providers.size === 1 && current.providers.has(provider) ? transitCatalog.providers : [provider]),
+    }))
+  }
+
+  function isolateTransitMode(transportMode: TransitMode) {
+    setTransitFilters((current) => ({ ...current,
+      modes: new Set(current.modes.size === 1 && current.modes.has(transportMode) ? transitCatalog.modes : [transportMode]),
+    }))
   }
 
   function handleLocateMatches(ids: string[]) {
@@ -414,12 +431,12 @@ export default function App() {
         </DetailsSheet>
       </DetailsDock>
 
-      {mode === 'physical' && <div className="filter-bar" aria-label="Filtros del mapa físico">{visiblePhysicalFilters.map((filter) => <button key={filter} className={physicalFilters.has(filter) ? 'active' : ''} aria-pressed={physicalFilters.has(filter)} onClick={() => toggleFilter(filter)}>{FILTER_LABELS[filter]}</button>)}</div>}
+      {mode === 'physical' && <div className="filter-bar" aria-label="Filtros del mapa físico">{visiblePhysicalFilters.map((filter) => <FilterButton key={filter} active={physicalFilters.has(filter)} onToggle={() => toggleFilter(filter)} onHold={() => isolateFilter(filter)}>{FILTER_LABELS[filter]}</FilterButton>)}</div>}
       {mode === 'political' && <div className="filter-bar level-bar" aria-label="Nivel territorial">{(Object.keys(POLITICAL_LEVEL_LABELS) as PoliticalLevel[]).map((level) => <button key={level} className={politicalLevel === level ? 'active' : ''} aria-pressed={politicalLevel === level} onClick={() => setPoliticalLevel(level)}>{POLITICAL_LEVEL_LABELS[level]}</button>)}</div>}
       {mode === 'transit' && <div className="filter-bar transit-filter-bar" aria-label="Filtros de transporte">
-        {transitCatalog.modes.map((transportMode) => <button key={transportMode} className={transitFilters.modes.has(transportMode) ? 'active' : ''} aria-pressed={transitFilters.modes.has(transportMode)} onClick={() => toggleTransitMode(transportMode)}>{TRANSIT_MODE_LABELS[transportMode]}</button>)}
+        {transitCatalog.modes.map((transportMode) => <FilterButton key={transportMode} active={transitFilters.modes.has(transportMode)} onToggle={() => toggleTransitMode(transportMode)} onHold={() => isolateTransitMode(transportMode)}>{TRANSIT_MODE_LABELS[transportMode]}</FilterButton>)}
         <span className="filter-divider" aria-hidden="true" />
-        {transitCatalog.providers.map((provider) => <button key={provider} className={transitFilters.providers.has(provider) ? 'active' : ''} aria-pressed={transitFilters.providers.has(provider)} onClick={() => toggleTransitProvider(provider)}>{provider}</button>)}
+        {transitCatalog.providers.map((provider) => <FilterButton key={provider} active={transitFilters.providers.has(provider)} onToggle={() => toggleTransitProvider(provider)} onHold={() => isolateTransitProvider(provider)}>{provider}</FilterButton>)}
         <span className="filter-divider" aria-hidden="true" />
         <button className={transitFilters.showRealtime ? 'active' : ''} aria-pressed={transitFilters.showRealtime} onClick={() => setTransitFilters((current) => ({ ...current, showRealtime: !current.showRealtime }))}>Tiempo real</button>
       </div>}
