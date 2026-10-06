@@ -71,12 +71,14 @@ if(motion.key==='loading'){
   const finishes=[...card.querySelectorAll('.logo')].map(logo=>{
    const ring=logo.querySelector('.rim'),rotor=logo.querySelector('.loading-rotor');
    const state=getComputedStyle(ring),dash=state.strokeDasharray,offset=state.strokeDashoffset;
-   const rotation=getComputedStyle(rotor).transform;
-   rotor.style.animation='none';rotor.style.transform=rotation;
+   const arcLength=parseFloat(dash);
+   const remaining=Number.isFinite(arcLength)?Math.max(0,Math.min(1,1-arcLength)):0;
+   const duration=Math.max(280,remaining*1400);
+   // Keep the existing rotation running while the remaining gap closes.
    ring.style.animation='none';ring.style.strokeDasharray=dash;ring.style.strokeDashoffset=offset;
-   const finish=()=>{ring.style.strokeDasharray='none';ring.style.strokeDashoffset='0';ring.classList.add('is-complete')};
+   const finish=()=>{const rotation=getComputedStyle(rotor).transform;rotor.style.animation='none';rotor.style.transform=rotation;ring.style.strokeDasharray='none';ring.style.strokeDashoffset='0';ring.classList.add('is-complete')};
    if(reduced){finish();return Promise.resolve()}
-   const closing=ring.animate([{strokeDasharray:dash,strokeDashoffset:offset},{strokeDasharray:'1 0',strokeDashoffset:offset}],{duration:600,easing:'ease-out',fill:'forwards'});
+   const closing=ring.animate([{strokeDasharray:dash,strokeDashoffset:offset},{strokeDasharray:'1 0',strokeDashoffset:String(parseFloat(offset)-remaining)}],{duration,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
    return closing.finished.then(()=>{finish();closing.cancel()});
   });
   Promise.all(finishes).then(()=>{description.textContent='Carga completada. Pulsa Reiniciar para volver a cargar.'});
