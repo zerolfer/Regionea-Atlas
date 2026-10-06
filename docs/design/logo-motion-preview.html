@@ -46,6 +46,7 @@ const motions=[
 function createCard(motion){
 const card=document.createElement('section');card.className='card '+motion.key+(['locate','selection','mode','press'].includes(motion.key)?' action':'');card.dataset.motion=motion.key;
 const title=document.createElement('h2');title.textContent=motion.name;card.append(title);
+const proportion=document.createElement('p');proportion.textContent=selectedColor==='original'?'Ojo original · 100 %':'Ojo ampliado · 112 %';card.append(proportion);
 const svg=originalTemplate.cloneNode(true);svg.setAttribute('aria-label',motion.name+' · logo animado');
 svg.style.setProperty('--ink',selectedColor==='original'?'#29251f':selectedColor);
 const rim=svg.querySelector('.rim'),handle=svg.querySelector('.handle'),outer=svg.querySelector('path[d^="M27"]');
@@ -58,7 +59,7 @@ outer.before(eye);
 [outer,svg.querySelector('path[d^="M37"]'),svg.querySelector('.pupil-ring'),svg.querySelector('circle[cy="63"]')].forEach(part=>eye.append(part));
 handle.setAttribute('d','M84.16 88.64 100.1 104.2');
 }
-if(selectedColor!=='original'||motion.key==='mode'){rim.setAttribute('stroke','currentColor');handle.setAttribute('stroke','currentColor');outer.setAttribute('fill','currentColor')}
+if(selectedColor!=='original'){rim.setAttribute('stroke','currentColor');handle.setAttribute('stroke','currentColor');outer.setAttribute('fill','currentColor')}else{handle.setAttribute('d','M82 86 99 103');if(motion.key==='mode')outer.setAttribute('fill','currentColor')}
 if(motion.key==='loading'){const rotor=document.createElementNS('http://www.w3.org/2000/svg','g');rotor.classList.add('loading-rotor');rim.replaceWith(rotor);rotor.append(rim)}
 if(motion.key==='locate'){const wave=document.createElementNS('http://www.w3.org/2000/svg','circle');wave.classList.add('wave');wave.setAttribute('cx','64');wave.setAttribute('cy','64');wave.setAttribute('r','22');wave.setAttribute('fill','none');wave.setAttribute('stroke','currentColor');wave.setAttribute('stroke-width','3.5');svg.append(wave);if(locateWaves===2){const echo=wave.cloneNode(true);echo.classList.add('echo');svg.append(echo)}}
 if(motion.key==='mode'){
