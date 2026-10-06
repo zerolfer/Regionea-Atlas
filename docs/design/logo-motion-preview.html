@@ -33,6 +33,7 @@
 const grid=document.querySelector('.grid');
 const originalTemplate=document.querySelector('#original-logo').content.querySelector('svg').cloneNode(true);
 let selectedColor='#b35e37';
+let locateWaves=2;
 const modeColors=['#b35e37','#4e765c','#326b89'];const modeNames=['Político','Físico','Transporte'];let modeIndex=0;let modeSerial=0;
 const motions=[
 {key:'welcome',name:'Bienvenida',description:'El palito nace del interior y dibuja el círculo exterior.'},
@@ -57,7 +58,7 @@ outer.before(eye);
 handle.setAttribute('d','M84.16 88.64 100.1 104.2');
 if(selectedColor!=='original'||motion.key==='mode'){rim.setAttribute('stroke','currentColor');handle.setAttribute('stroke','currentColor');outer.setAttribute('fill','currentColor')}
 if(motion.key==='loading'){const rotor=document.createElementNS('http://www.w3.org/2000/svg','g');rotor.classList.add('loading-rotor');rim.replaceWith(rotor);rotor.append(rim)}
-if(motion.key==='locate'){const wave=document.createElementNS('http://www.w3.org/2000/svg','circle');wave.classList.add('wave');wave.setAttribute('cx','64');wave.setAttribute('cy','64');wave.setAttribute('r','22');wave.setAttribute('fill','none');wave.setAttribute('stroke','currentColor');wave.setAttribute('stroke-width','3.5');svg.append(wave);const echo=wave.cloneNode(true);echo.classList.add('echo');svg.append(echo)}
+if(motion.key==='locate'){const wave=document.createElementNS('http://www.w3.org/2000/svg','circle');wave.classList.add('wave');wave.setAttribute('cx','64');wave.setAttribute('cy','64');wave.setAttribute('r','22');wave.setAttribute('fill','none');wave.setAttribute('stroke','currentColor');wave.setAttribute('stroke-width','3.5');svg.append(wave);if(locateWaves===2){const echo=wave.cloneNode(true);echo.classList.add('echo');svg.append(echo)}}
 if(motion.key==='mode'){
  const from=modeIndex,to=(from+1)%modeColors.length;svg.style.setProperty('--ink',modeColors[from]);
  const ns='http://www.w3.org/2000/svg',defs=document.createElementNS(ns,'defs'),mask=document.createElementNS(ns,'mask'),reveal=document.createElementNS(ns,'circle');
@@ -66,7 +67,7 @@ if(motion.key==='mode'){
  const layer=document.createElementNS(ns,'g');layer.setAttribute('mask','url(#'+id+')');layer.style.color=modeColors[to];[...svg.children].filter(part=>part!==defs).forEach(part=>layer.append(part.cloneNode(true)));svg.append(layer);
  motion={...motion,description:modeNames[from]+' → '+modeNames[to]+'. Un solo cambio por pulsación.'};modeIndex=to;
 }
-card.append(svg);const description=document.createElement('p');description.textContent=motion.description;card.append(description);
+card.append(svg);const description=document.createElement('p');description.textContent=motion.key==='locate'?(locateWaves===1?'Una onda recorre el entorno; el símbolo permanece quieto.':'Dos ondas recorren el entorno; el símbolo permanece quieto.'):motion.description;card.append(description);
 const small=svg.cloneNode(true);small.classList.add('small');small.setAttribute('aria-label',motion.name+' a 34 píxeles');if(motion.key==='mode'){const mask=small.querySelector('mask');const oldId=mask.id;mask.id=oldId+'-small';small.querySelector('[mask]').setAttribute('mask','url(#'+mask.id+')')}const sizes=document.createElement('div');sizes.className='size-comparison';
 const medium=small.cloneNode(true);medium.classList.add('medium');medium.setAttribute('aria-label',motion.name+' a 46 píxeles');
 if(motion.key==='mode'){const mask=medium.querySelector('mask');mask.id=mask.id+'-46';medium.querySelector('[mask]').setAttribute('mask','url(#'+mask.id+')')}
@@ -94,6 +95,11 @@ if(motion.key==='loading'){
   Promise.all(finishes).then(()=>{description.textContent='Carga completada. Pulsa Reiniciar para volver a cargar.'});
  });
  card.append(complete);
+}
+if(motion.key==='locate'){
+ const options=document.createElement('div');options.setAttribute('role','group');options.setAttribute('aria-label','Número de ondas');
+ [1,2].forEach(count=>{const option=document.createElement('button');option.className='repeat-card';option.textContent=count===1?'1 onda':'2 ondas';option.setAttribute('aria-pressed',String(locateWaves===count));option.addEventListener('click',()=>{locateWaves=count;const replacement=createCard(motion);card.replaceWith(replacement);replacement.querySelector('[aria-pressed="true"]').focus()});options.append(option)});
+ card.append(options);
 }
 return card;
 }
