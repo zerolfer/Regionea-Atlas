@@ -54,6 +54,54 @@ function activeFilters(label: string) {
   return within(bar).queryAllByRole('button', { pressed: true }).map(button => button.textContent)
 }
 
+function doubleClick(button: HTMLElement) {
+  for (const detail of [1, 2]) {
+    fireEvent.pointerDown(button, { button: 0 })
+    fireEvent.pointerUp(button)
+    fireEvent.click(button, { detail })
+  }
+  fireEvent.doubleClick(button, { detail: 2 })
+}
+
+it('doble clic físico aísla y repetir restaura según el estado anterior al primer clic', async () => {
+  await setup()
+  const peaks = screen.getByRole('button', { name: 'Picos' })
+  doubleClick(peaks)
+  expect(activeFilters('Filtros del mapa físico')).toEqual(['Picos'])
+  doubleClick(peaks)
+  expect(activeFilters('Filtros del mapa físico')).toEqual(['Sierras', 'Picos', 'Ríos y agua', 'Costa', 'Espacios protegidos'])
+})
+
+it('doble clic sobre un filtro apagado lo aísla y conserva los ajustes del terreno', async () => {
+  await setup('/mapa/fisico?filtros=relief,terrain3d,hypsometry')
+  doubleClick(screen.getByRole('button', { name: 'Picos' }))
+  expect(activeFilters('Filtros del mapa físico')).toEqual(['Picos'])
+  act(() => vi.advanceTimersByTime(220))
+  expect(new URLSearchParams(window.location.search).get('filtros')).toBe('peaks,hypsometry,terrain3d')
+})
+
+it('doble clic en transporte conserva los otros grupos y restaura solo el propio', async () => {
+  await setup('/mapa/transporte?tiempoReal=0')
+  doubleClick(screen.getByRole('button', { name: 'Tren' }))
+  expect(activeFilters('Filtros de transporte')).toEqual(['Tren', 'CTA', 'RENFE'])
+  doubleClick(screen.getByRole('button', { name: 'CTA' }))
+  expect(activeFilters('Filtros de transporte')).toEqual(['Tren', 'CTA'])
+  doubleClick(screen.getByRole('button', { name: 'Tren' }))
+  expect(activeFilters('Filtros de transporte')).toEqual(['Autobús', 'Tren', 'CTA'])
+})
+
+it('un segundo clic arrastrado no se convierte en aislamiento al recibir dblclick', async () => {
+  await setup()
+  const peaks = screen.getByRole('button', { name: 'Picos' })
+  fireEvent.click(peaks, { detail: 1 })
+  fireEvent.pointerDown(peaks, { button: 0, clientX: 20, clientY: 20 })
+  fireEvent.pointerMove(peaks, { clientX: 50, clientY: 20 })
+  fireEvent.pointerUp(peaks)
+  fireEvent.click(peaks, { detail: 2 })
+  fireEvent.doubleClick(peaks, { detail: 2 })
+  expect(activeFilters('Filtros del mapa físico')).toEqual(['Sierras', 'Ríos y agua', 'Costa', 'Espacios protegidos'])
+})
+
 it('mantener un filtro físico deja solo ese y repetir activa todos los disponibles', async () => {
   await setup()
   hold(screen.getByRole('button', { name: 'Picos' }))

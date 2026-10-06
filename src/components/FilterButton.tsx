@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 
-type Props = { active: boolean; onToggle: () => void; onHold: () => void; children: ReactNode }
+type Props = { active: boolean; soleActive: boolean; onToggle: () => void; onHold: (restoreAll?: boolean) => void; children: ReactNode }
 
-export default function FilterButton({ active, onToggle, onHold, children }: Props) {
+export default function FilterButton({ active, soleActive, onToggle, onHold, children }: Props) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const gesture = useRef<{ pointerId: number | null; x: number; y: number; suppressClick: boolean; inProgress: boolean }>({ pointerId: null, x: 0, y: 0, suppressClick: false, inProgress: false })
   const holdCallback = useRef(onHold)
+  const firstClick = useRef<boolean | null>(null)
   useEffect(() => { holdCallback.current = onHold }, [onHold])
 
   const clearTimer = useCallback(() => {
@@ -16,15 +17,18 @@ export default function FilterButton({ active, onToggle, onHold, children }: Pro
   const cancel = useCallback(() => {
     if (!gesture.current.inProgress) return
     clearTimer()
+    firstClick.current = null
     gesture.current.suppressClick = gesture.current.pointerId !== null
     gesture.current.inProgress = false
   }, [clearTimer])
   const start = (pointerId: number | null, x = 0, y = 0) => {
     clearTimer()
+    if (pointerId === null) firstClick.current = null
     gesture.current = { pointerId, x, y, suppressClick: false, inProgress: true }
     timer.current = setTimeout(() => {
       timer.current = null
       gesture.current.suppressClick = true
+      firstClick.current = null
       holdCallback.current()
     }, 500)
   }
@@ -37,8 +41,8 @@ export default function FilterButton({ active, onToggle, onHold, children }: Pro
     type="button"
     className={active ? 'active' : ''}
     aria-pressed={active}
-    title="Mantén pulsado para mostrar solo este filtro; repite para activar todos"
-    aria-description="Mantén pulsado, también con Espacio, para mostrar solo este filtro; repite para activar todos"
+    title="Doble clic o mantén pulsado para mostrar solo este filtro; repite para activar todos"
+    aria-description="Doble clic o mantén pulsado, también con Espacio, para mostrar solo este filtro; repite para activar todos"
     onPointerDown={(event) => {
       if (event.button !== 0 || !event.isPrimary) return
       start(event.pointerId, event.clientX, event.clientY)
@@ -63,11 +67,24 @@ export default function FilterButton({ active, onToggle, onHold, children }: Pro
       const current = gesture.current
       if (current.suppressClick && (event.detail !== 0 || current.pointerId === null)) {
         current.suppressClick = false
+        firstClick.current = null
         event.preventDefault()
         return
       }
       clearTimer()
+      if (event.detail > 0 && event.detail % 2 === 0 && firstClick.current !== null) return
+      // Keep single-click feedback immediate, but base the double-click action
+      // on the state before that click, not on its provisional toggle.
+      firstClick.current = event.detail % 2 === 1 ? soleActive : null
       onToggle()
+    }}
+    onDoubleClick={(event) => {
+      event.preventDefault()
+      clearTimer()
+      if (firstClick.current === null) return
+      const restoreAll = firstClick.current
+      firstClick.current = null
+      holdCallback.current(restoreAll)
     }}
   >{children}</button>
 }
