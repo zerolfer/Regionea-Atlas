@@ -58,7 +58,7 @@ if(motion.key==='mode'){
  const ns='http://www.w3.org/2000/svg',defs=document.createElementNS(ns,'defs'),mask=document.createElementNS(ns,'mask'),reveal=document.createElementNS(ns,'circle');
  const id='mode-reveal-'+(++modeSerial);mask.id=id;mask.setAttribute('maskUnits','userSpaceOnUse');mask.setAttribute('x','0');mask.setAttribute('y','0');mask.setAttribute('width','128');mask.setAttribute('height','128');
  reveal.setAttribute('cx','64');reveal.setAttribute('cy','64');reveal.setAttribute('r','92');reveal.setAttribute('fill','white');reveal.classList.add('mode-reveal');mask.append(reveal);defs.append(mask);svg.append(defs);
- const layer=document.createElementNS(ns,'g');layer.setAttribute('mask','url(#'+id+')');layer.style.color=modeColors[to];[outer,rim,handle].forEach(part=>layer.append(part.cloneNode(true)));svg.append(layer);
+ const layer=document.createElementNS(ns,'g');layer.setAttribute('mask','url(#'+id+')');layer.style.color=modeColors[to];[...svg.children].filter(part=>part!==defs).forEach(part=>layer.append(part.cloneNode(true)));svg.append(layer);
  motion={...motion,description:modeNames[from]+' → '+modeNames[to]+'. Un solo cambio por pulsación.'};modeIndex=to;
 }
 card.append(svg);const description=document.createElement('p');description.textContent=motion.description;card.append(description);
