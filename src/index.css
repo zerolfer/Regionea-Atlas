@@ -303,3 +303,18 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 
 .river-tooltip { pointer-events: none; }
 .river-tooltip .maplibregl-popup-content { padding: 7px 11px; color: #285f68; background: #fffaf1; border-radius: 8px; font: 600 12px/1.4 system-ui, sans-serif; }
+
+/* Logo motion follows the map mode; location keeps the symbol still. */
+.brand-mark .atlas-logo { display: block; width: 100%; height: 100%; }
+.atlas-logo-transition { transform-origin: 64px 64px; animation: atlas-logo-mode .8s ease-out forwards; }
+.atlas-logo-reveal { transform-origin: 64px 64px; transform: scale(0); animation: atlas-logo-reveal .8s cubic-bezier(.2,.8,.2,1) forwards; }
+.atlas-logo-wave { transform-origin: 64px 64px; opacity: 0; animation: atlas-logo-wave 1.5s cubic-bezier(.2,.65,.3,1) forwards; }
+.atlas-logo-echo { animation-delay: .22s; }
+@keyframes atlas-logo-mode { 0%,100% { transform: scale(1); } 35% { transform: scale(1.06); } }
+@keyframes atlas-logo-reveal { to { transform: scale(1); } }
+@keyframes atlas-logo-wave { 0% { opacity: 0; transform: scale(.55); } 12% { opacity: .95; } 55% { opacity: .75; } 100% { opacity: 0; transform: scale(2.65); } }
+@media (prefers-reduced-motion: reduce) {
+  .atlas-logo-transition { animation: none; transform: none; }
+  .atlas-logo-reveal { animation: none; transform: scale(1); }
+  .atlas-logo-wave { animation: none; opacity: 0; }
+}

@@ -7,6 +7,7 @@ import DetailsSheet from './components/DetailsSheet'
 import PanelHeader from './components/PanelHeader'
 import EntityPanel from './components/EntityPanel'
 import ModeSwitch from './components/ModeSwitch'
+import AnimatedLogo from './components/AnimatedLogo'
 import MapLayers from './components/MapLayers'
 import FilterButton from './components/FilterButton'
 import SearchBox from './components/SearchBox'
@@ -69,6 +70,7 @@ export default function App() {
   const [atlas, setAtlas] = useState<AtlasData | null>(null)
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [mode, setModeState] = useState<MapMode>(initial.mode)
+  const [logoLocateToken, setLogoLocateToken] = useState(0)
   const [selectedId, setSelectedId] = useState<string | null>(initial.selectedId)
   const [transitSelection, setTransitSelection] = useState<TransitSelection | null>(null)
   const [compareIds, setCompareIds] = useState<string[]>(initial.compareIds)
@@ -391,11 +393,11 @@ export default function App() {
 
       <header className="topbar">
         <button className="brand" onClick={() => { setCompareOpen(false); setSelectedId(null); setTransitSelection(null) }} aria-label="Inicio de Regionea Atlas">
-          <span className="brand-mark" aria-hidden="true"><img src="/favicon.svg" alt="" /></span>
+          <span className="brand-mark" aria-hidden="true"><AnimatedLogo mode={mode} locateToken={logoLocateToken} /></span>
           <span><strong>Regionea</strong><small>Atlas</small></span>
         </button>
         <SearchBox key={mode} items={searchItems} mode={mode} onSelect={selectSearchItem} />
-        <button className="location-button" onClick={() => locate()}><span aria-hidden="true">⌾</span><span>Ver mi territorio</span></button>
+        <button className="location-button" aria-label="Ver mi territorio" onClick={() => { setLogoLocateToken((token) => token + 1); locate() }}><span aria-hidden="true">⌾</span><span>Ver mi territorio</span></button>
       </header>
 
       <DetailsDock onCollapsedChange={setDesktopPanelCollapsed}>
