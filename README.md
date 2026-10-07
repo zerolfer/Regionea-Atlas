@@ -2,6 +2,18 @@
 
 Atlas cartográfico exploratorio de Asturias, con contexto de España y Europa. La aplicación ofrece tres lecturas coordinadas del territorio: político-territorial, física y de transporte público.
 
+## Vista previa
+
+El mapa político con la ficha de Asturias abierta, en escritorio y móvil.
+
+### Escritorio
+
+![Regionea Atlas en escritorio: mapa político de Asturias con panel lateral y ficha territorial](docs/images/desktop.png)
+
+### Móvil
+
+<img src="docs/images/mobile.png" alt="Regionea Atlas en móvil: mapa político de Asturias con controles adaptados y ficha territorial inferior" width="390" />
+
 ## Licencia
 
 El código y la documentación propios del proyecto se distribuyen bajo la [licencia MIT](LICENSE). Esta licencia no se aplica a los datos de terceros de `public/data/atlas`, ni a los mapas, imágenes y servicios externos. Las dependencias conservan sus propias licencias.
