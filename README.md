@@ -2,6 +2,12 @@
 
 Atlas cartográfico exploratorio de Asturias, con contexto de España y Europa. La aplicación ofrece tres lecturas coordinadas del territorio: político-territorial, física y de transporte público.
 
+## Licencia
+
+El código y la documentación propios del proyecto se distribuyen bajo la [licencia MIT](LICENSE). Esta licencia no se aplica a los datos de terceros de `public/data/atlas`, ni a los mapas, imágenes y servicios externos. Las dependencias conservan sus propias licencias.
+
+Las fuentes territoriales y físicas y sus condiciones figuran en `public/data/atlas/manifest.json`. Antes de redistribuir un snapshot, consulte también las [condiciones de publicación de datos](docs/data-publication.md); los datos de transporte conservan las licencias de cada proveedor y del NAP.
+
 ## Estado del producto
 
 - Mapa político progresivo: países europeos, comunidades y provincias españolas, ocho comarcas funcionales, 78 concejos, 857 parroquias estadísticas y 91 barrios de Avilés, Gijón, Langreo, Mieres y Oviedo.
