@@ -20,7 +20,8 @@ import { loadTransitCatalog } from './data/transit'
 import type { TransitCatalog } from './data/transit'
 import { ALL_PHYSICAL_FILTERS, DEFAULT_PHYSICAL_FILTERS, parseInitialUrl, writeCameraParams } from './url-state'
 import { availablePhysicalFilters } from './map/physical'
-import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, SearchItem, TransitFilters, TransitFreshness, TransitMode, TransitSelection, UserLocation, ViewState } from './types'
+import { useUserLocation } from './use-user-location'
+import type { AtlasEntity, BottomSheetLevel, MapMode, PhysicalFilter, PoliticalLevel, SearchItem, TransitFilters, TransitFreshness, TransitMode, TransitSelection, ViewState } from './types'
 
 const MapView = lazy(() => import('./map/MapView'))
 const MODE_PATHS: Record<MapMode, string> = { political: 'politico', physical: 'fisico', transit: 'transporte' }
@@ -81,8 +82,8 @@ export default function App() {
   const [politicalLevel, setPoliticalLevel] = useState<PoliticalLevel>(initial.politicalLevel)
   const [view, setView] = useState<ViewState>(initial.view)
   const [externalViewRequest, setExternalViewRequest] = useState<{ view: ViewState; token: number } | null>(null)
-  const [locateRequest, setLocateRequest] = useState<UserLocation | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const { userLocation, locateRequest, locate } = useUserLocation(setToast)
   const [sourcesOpen, setSourcesOpen] = useState(false)
   const [sheetLevel, setSheetLevel] = useState<BottomSheetLevel>('half')
   const [desktopPanelCollapsed, setDesktopPanelCollapsed] = useState(false)
@@ -234,13 +235,6 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!navigator.permissions) return
-    navigator.permissions.query({ name: 'geolocation' }).then((permission) => {
-      if (permission.state === 'granted') locate(false)
-    }).catch(() => undefined)
-  }, [])
-
-  useEffect(() => {
     if (transitSelection?.type !== 'stop') { setDepartures([]); return }
     let active = true
     const loadDepartures = async () => {
@@ -311,20 +305,6 @@ export default function App() {
     setPhysicalFilters((current) => new Set((restoreAll ?? (current.size === 1 && current.has(filter))) ? visiblePhysicalFilters : [filter]))
   }
 
-  function locate(showFeedback = true) {
-    if (!navigator.geolocation) { setToast('Este navegador no permite utilizar la ubicación'); return }
-    if (showFeedback) setToast('Buscando tu territorio…')
-    navigator.geolocation.getCurrentPosition(
-      (position) => setLocateRequest({
-        coordinates: [position.coords.longitude, position.coords.latitude],
-        accuracy: position.coords.accuracy,
-        token: Date.now(),
-      }),
-      () => setToast('No se pudo acceder a la ubicación. Seguimos en Asturias.'),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
-    )
-  }
-
   function toggleTransitProvider(provider: string) {
     setTransitFilters((current) => {
       const providers = new Set(current.providers)
@@ -378,6 +358,7 @@ export default function App() {
           transitFilters={transitFilters}
           politicalLevel={politicalLevel}
           locateRequest={locateRequest}
+          userLocation={userLocation}
           sheetLevel={sheetLevel}
           desktopPanelCollapsed={desktopPanelCollapsed}
           initialView={initial.view}

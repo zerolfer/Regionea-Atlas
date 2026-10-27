@@ -62,11 +62,33 @@ function props(): ComponentProps<typeof MapView> {
     mode: 'political', selected: null, transitSelection: null, compared: [], relatedPhysicalIds: [],
     physicalFilters: new Set(), transitFilters: { modes: new Set(['bus', 'rail']), providers: new Set(), showRealtime: false },
     appearance: { basemap: 'plan', terrain3d: false, hypsometry: false },
-    politicalLevel: 'auto', locateRequest: null, sheetLevel: 'half', desktopPanelCollapsed: false,
+    politicalLevel: 'auto', locateRequest: null, userLocation: null, sheetLevel: 'half', desktopPanelCollapsed: false,
     initialView: { center: [-5.86, 43.31], zoom: 8 }, externalViewRequest: null, focusRequestToken: 0,
     onEntityClick: vi.fn(), onTransitClick: vi.fn(), onViewportChange: vi.fn(), onLocateMatches: vi.fn(), onToast: vi.fn(),
   }
 }
+
+it('mueve el marcador con cada lectura sin mover la cámara ni volver a localizar al cambiar de modo', () => {
+  const source = { setData: vi.fn() }
+  camera.getSource.mockImplementation((id?: string) => id === 'user-location' ? source : undefined)
+  const location = { coordinates: [-5.69, 43.54] as [number, number], accuracy: 8, token: 1 }
+  const initial = { ...props(), mode: 'physical' as const, userLocation: location, locateRequest: location }
+  const { rerender } = render(<MapView {...initial} />)
+  act(() => listeners['style.load']())
+  expect(camera.easeTo).toHaveBeenCalledOnce()
+  camera.easeTo.mockClear()
+  const next = { ...location, coordinates: [-5.68, 43.55] as [number, number], token: 2 }
+  rerender(<MapView {...initial} userLocation={next} />)
+  expect(source.setData).toHaveBeenLastCalledWith({
+    type: 'FeatureCollection', features: [{ type: 'Feature', properties: { accuracy: 8 }, geometry: { type: 'Point', coordinates: [-5.68, 43.55] } }],
+  })
+  rerender(<MapView {...initial} userLocation={next} mode="transit" />)
+  act(() => listeners['style.load']())
+  expect(source.setData.mock.calls.at(-1)?.[0].features[0].geometry.coordinates).toEqual([-5.68, 43.55])
+  expect(camera.easeTo).not.toHaveBeenCalled()
+  rerender(<MapView {...initial} userLocation={null} locateRequest={null} mode="transit" />)
+  expect(source.setData).toHaveBeenLastCalledWith({ type: 'FeatureCollection', features: [] })
+})
 
 it('el tooltip de un cauce sin topónimo es descriptivo, no vacío', () => {
   camera.queryRenderedFeatures.mockReturnValue([{ properties: { kind: 'river', name: '' } }])

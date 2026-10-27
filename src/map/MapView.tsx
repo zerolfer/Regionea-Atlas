@@ -27,6 +27,7 @@ type Props = {
   transitFilters: TransitFilters
   politicalLevel: PoliticalLevel
   locateRequest: UserLocation | null
+  userLocation: UserLocation | null
   sheetLevel: BottomSheetLevel
   desktopPanelCollapsed: boolean
   initialView: ViewState
@@ -303,7 +304,7 @@ export default function MapView(props: Props) {
       applyTransitFilters(map, propsRef.current.transitFilters)
       applySelection(map, propsRef.current.mode, propsRef.current.selected, propsRef.current.transitSelection, propsRef.current.relatedPhysicalIds)
       applyCompared(map, propsRef.current.compared)
-      applyUserLocation(map, propsRef.current.locateRequest)
+      applyUserLocation(map, propsRef.current.userLocation)
       focusController.current.apply(map, propsRef.current, true, navigationPadding(propsRef.current))
     })
     return () => {
@@ -433,18 +434,23 @@ export default function MapView(props: Props) {
 
   useEffect(() => {
     const map = mapRef.current
+    if (map && styleReadyRef.current) applyUserLocation(map, props.userLocation)
+  }, [props.userLocation])
+
+  useEffect(() => {
+    const map = mapRef.current
     const request = props.locateRequest
     if (!map || !request) return
-    if (styleReadyRef.current) applyUserLocation(map, request)
     focusPoint(map, request.coordinates, 11, navigationPadding(propsRef.current), 850)
-    if (props.mode !== 'political') return
+    if (propsRef.current.mode !== 'political') return
     map.once('idle', () => {
+      if (propsRef.current.mode !== 'political' || propsRef.current.locateRequest?.token !== request.token) return
       const point = map.project(request.coordinates)
       const layers = existingLayers(map, POLITICAL_INTERACTIVE_LAYERS)
       const ids = uniqueFeatures(map.queryRenderedFeatures(point, { layers })).map((feature) => String(feature.properties?.id))
       propsRef.current.onLocateMatches(ids)
     })
-  }, [props.locateRequest, props.mode])
+  }, [props.locateRequest])
 
   return <div id="map" aria-label="Mapa interactivo de Regionea Atlas" />
 }
